@@ -10,3 +10,5 @@ if __name__ == '__main__':
     demo = sourcedemo.Demo(args.demo_file)
 
     print(demo.header)
+    print(demo.tick_start, demo.tick_end, demo.get_ticks())
+    print(demo.get_time())

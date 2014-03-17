@@ -12,14 +12,8 @@ import enum
 
 from . import binary_reader
 
-TICK_FREQUENCY = 60 # Hz
 MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
-INTRO_SPAWN = -8674.000, 1773.000, 28.000
-
-# Tick difference between moving away from the spawn location and the 
-# crosshairs appearing
-CROSSHAIR_TICK_OFFSET = 104
 
 class Commands(enum.IntEnum):
     SIGN_ON = 1
@@ -37,12 +31,14 @@ class Demo():
     Read a Source-engine DEM (Demo) file.
     https://developer.valvesoftware.com/wiki/DEM_Format
     """
+    TICK_FREQUENCY = 60 # Hz
+
     def __init__(self, filepath):
         self.demo = binary_reader.BinaryReader(filepath)
         try:
             magic = self.demo.read_string(8, trim_null=False)
         except struct.error:
-            raise Exception('Empty file.')
+            raise Exception('File error, might be empty?')
         if magic != HEADER_MAGIC:
             raise Exception("The specified file doesn't seem to be a demo.")
 
@@ -59,12 +55,18 @@ class Demo():
                 'sign_on_length':   self.demo.read_int32(),
             }
 
+        #self.ticks = []
+        self.tick_start = None
+        self.tick_end = None
+
         self.process()
 
     def process(self):
         # TODO: Remove when done debugging.
-        for command, tick, data in itertools.islice(self._process_commands(), 2**31):
-            continue
+        for command, tick, data in itertools.islice(self._process_commands(), 2**9):
+            #self.ticks.append(tick)
+
+            #continue
             if command == Commands.PACKET:
                 print(command, tick, '{:10.3f}, {:10.3f}, {:10.3f}'.format(*data))
             elif command == Commands.CONSOLE_CMD:
@@ -75,7 +77,10 @@ class Demo():
                 print(command, tick)
 
     def get_ticks(self):
-        return
+        return self.tick_end - self.tick_start
+
+    def get_time(self):
+        return self.get_ticks()/Demo.TICK_FREQUENCY
 
     def _process_commands(self):
         while True:
@@ -85,8 +90,19 @@ class Demo():
 
             tick = self.demo.read_int32()
             self.demo.skip(1) # unknown
+            data = self._process_command(command)
 
-            yield command, tick, self._process_command(command)
+            if command == Commands.PACKET and tick >= 0:
+                if self.tick_start is None:
+                    self.tick_start = tick
+                self.tick_end = tick
+
+            if (command == Commands.CONSOLE_CMD and 
+                    data == b'ss_force_primary_fullscreen 0'):
+                print(tick)
+                self.tick_start = tick
+
+            yield command, tick, data
 
     def _process_command(self, command):
         return {

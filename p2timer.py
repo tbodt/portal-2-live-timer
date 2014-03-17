@@ -56,6 +56,11 @@ def demos_in_directory(directory):
     return glob.glob(os.path.join(directory, '*.dem'))
 
 class Portal2Demo(sourcedemo.Demo):
+    def __init__(self, filepath):
+        super(Portal2Demo, self).__init__(filepath)
+        if self.header['demo_protocol'] != 4:
+            raise ValueError("Demo file not a Portal 2 demo.")
+
     def get_ticks(self):
         if self.header['map_name'] == p2maps.MAP_LIST[0]:
             # subtract ticks before crosshair

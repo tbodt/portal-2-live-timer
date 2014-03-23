@@ -3,3 +3,11 @@ syntax: glob
 *.pyo
 __pycache__/
 *~
+
+# Visual Studio
+*.suo           # user settings
+*/bin/
+*/obj/
+
+# Windows
+Thumbs.db

@@ -1,18 +1,24 @@
 ﻿<Window 
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
-       Title="Portal2LiveTimer" Height="142" Width="419">
+       Title="Portal 2 Live Demo Timer" Height="250" Width="439">
     <Grid Margin="0,0,2,0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="20"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20"/>
             <ColumnDefinition/>
-            <ColumnDefinition Width="20"/>
         </Grid.ColumnDefinitions>
-        <Label x:Name="timerDisplay" Content="0.00" Margin="0,10,10,0" VerticalAlignment="Top" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right" Grid.Column="1" Grid.Row="1"/>
-        <Button x:Name="startButton" Content="Start" Grid.Column="1" HorizontalAlignment="Left" Height="41" Margin="10,10,0,0" Grid.Row="1" VerticalAlignment="Top" Width="86"/>
+        <Label x:Name="lblTimerLive" Content="0:00" Margin="0,12,7,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right"/>
+        <Button x:Name="btnDemoDir" Content="Demo Directory" HorizontalAlignment="Right" Height="23" Margin="0,140,10,0" VerticalAlignment="Top" Width="94" Click="startButton_Click"/>
+        <Label x:Name="lblLastMap" Content="(none yet)" Margin="10,93,0,0" VerticalAlignment="Top" FontSize="24" FontWeight="Bold" Height="42" HorizontalAlignment="Left"/>
+        <Label Content="Last Recorded Map" HorizontalAlignment="Left" Margin="10,82,0,0" VerticalAlignment="Top"/>
+        <Label Content="Estimated Time" Margin="0,10,10,0" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+        <Label Content="Last Demo Split" Margin="0,82,10,0" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+        <Label x:Name="lblTimerSplit" Content="0:00.000" Margin="0,93,10,0" VerticalAlignment="Top" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right" Height="42"/>
+        <TextBox x:Name="txtDemoDir" Height="23" Margin="10,140,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
+        <Label Content="Status" Margin="10,12,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+        <Label x:Name="lblStatus" Content="Waiting for demo..." Margin="10,24,0,0" VerticalAlignment="Top" FontSize="24" FontWeight="Bold" Height="42" HorizontalAlignment="Left"/>
+        <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Left" Height="30" Margin="10,180,0,0" VerticalAlignment="Top" Click="startButton_Click" Width="62"/>
     </Grid>
 </Window> 

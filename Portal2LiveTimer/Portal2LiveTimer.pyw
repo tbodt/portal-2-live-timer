@@ -1,6 +1,7 @@
 #! ipyw
 import clr
-clr.AddReference("System.Xml")
+#clr.AddReference("System.Xml")
+#clr.AddReference("System.Windows.Forms")
 clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
@@ -9,19 +10,29 @@ import wpf
 
 from System import TimeSpan
 from System.Windows import Application, Window
+#from System.Windows.Forms import FolderBrowserDialog
 from System.Windows.Threading import DispatcherTimer
 
 import time
 
-class MyWindow(Window):
+class Portal2DemoTimer(Window):
     def __init__(self):
+        super(Portal2DemoTimer, self).__init__()
         wpf.LoadComponent(self, 'Portal2LiveTimer.xaml')
 
         self.timer = DispatcherTimer()
-        self.timer.Interval =  TimeSpan(0, 0, 0, 0, 16)
-        self.timer.Tick += self.update
+        #self.timer.Interval =  TimeSpan(0, 0, 0, 0, 200)
+        #self.timer.Tick += self.update
 
-        self.startButton.Click += self.start
+        self.btnReset.Click += self.reset
+        self.btnDemoDir.Click += self.selectDirectory
+        
+    def selectDirectory(self, sender, args):
+        dialog = FolderBrowserDialog()
+        result = dialog.ShowDialog()
+
+    def reset(self, sender, args):
+        pass
 
     def start(self, sender, args):
         self.timer.Start()
@@ -43,4 +54,4 @@ class MyWindow(Window):
         self.timerDisplay.Content = clock_fmt
 
 if __name__ == '__main__':
-    Application().Run(MyWindow())
+    Application().Run(Portal2DemoTimer())

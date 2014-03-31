@@ -73,7 +73,7 @@ MAP_LIST, MAP_CHAPTER = zip(
     ('sp_a4_speed_tb_catch', 8),
     ('sp_a4_jump_polarity', 8),
 
-    # Chapter 9 - The Part Whereâ?¦
+    # Chapter 9 - The Part Where...
     ('sp_a4_finale1', 9),
     ('sp_a4_finale2', 9),
     ('sp_a4_finale3', 9),

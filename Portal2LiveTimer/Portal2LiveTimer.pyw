@@ -98,6 +98,7 @@ class Portal2LiveTimer(Window):
     def transitionWait(self):
         self.state = STATE_WAIT
         self.lblStatus.Content = "Waiting for demo..."
+        self.lblLastMap.Content = "(none)"
         self.ignoredDemos = set(demosInDirectory(self.demoDir))
         self.clockTime(0)
 

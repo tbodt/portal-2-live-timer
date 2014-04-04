@@ -2,6 +2,7 @@
 Source-engine DEM (Demo)
 https://developer.valvesoftware.com/wiki/DEM_Format
 """
+from __future__ import division
 import struct
 import itertools
 import io
@@ -24,6 +25,11 @@ class Commands(object):
     CUSTOM_DATA = 8
     STRING_TABLES = 9
 
+
+class DemoProcessError(Exception):
+    pass
+
+
 class Demo():
     """
     Read a Source-engine DEM (Demo) file.
@@ -32,39 +38,44 @@ class Demo():
     TICK_FREQUENCY = 60 # Hz
 
     def __init__(self, filepath):
-        self.demo = binary_reader.BinaryReader(filepath)
         try:
-            magic = self.demo.read_string(8, trim_null=False)
-        except struct.error:
-            raise Exception('File error, might be empty?')
-        if magic != HEADER_MAGIC:
-            raise Exception("The specified file doesn't seem to be a demo.")
+            self.demo = binary_reader.BinaryReader(filepath)
+            try:
+                magic = self.demo.read_string(8, trim_null=False)
+            except struct.error:
+                raise DemoProcessError('File error, might be empty?')
+            if magic != HEADER_MAGIC:
+                raise DemoProcessError("The specified file doesn't seem to be a demo.")
 
-        self.header = {
-                'demo_protocol':    self.demo.read_int32(),
-                'network_protocol': self.demo.read_int32(),
-                'server_name':      self.demo.read_string(MAX_OSPATH),
-                'client_name':      self.demo.read_string(MAX_OSPATH),
-                'map_name':         self.demo.read_string(MAX_OSPATH),
-                'game_directory':   self.demo.read_string(MAX_OSPATH),
-                'playback_time':    self.demo.read_float32(),
-                'ticks':            self.demo.read_int32(),
-                'frames':           self.demo.read_int32(),
-                'sign_on_length':   self.demo.read_int32(),
-            }
+            self.header = {
+                    'demo_protocol':    self.demo.read_int32(),
+                    'network_protocol': self.demo.read_int32(),
+                    'server_name':      self.demo.read_string(MAX_OSPATH),
+                    'client_name':      self.demo.read_string(MAX_OSPATH),
+                    'map_name':         self.demo.read_string(MAX_OSPATH),
+                    'game_directory':   self.demo.read_string(MAX_OSPATH),
+                    'playback_time':    self.demo.read_float32(),
+                    'ticks':            self.demo.read_int32(),
+                    'frames':           self.demo.read_int32(),
+                    'sign_on_length':   self.demo.read_int32(),
+                }
 
-        #self.ticks = []
-        self.tick_start = None
-        self.tick_end = None
+            #self.ticks = []
+            self.tick_start = None
+            self.tick_end = None
 
-        self.process()
+            self.process()
+
+            # release
+        finally:
+            self.demo.close()
 
     def process(self):
         # TODO: Remove when done debugging.
-        for command, tick, data in itertools.islice(self._process_commands(), 2**9):
+        for command, tick, data in self._process_commands():
             #self.ticks.append(tick)
 
-            #continue
+            continue
             if command == Commands.PACKET:
                 print(command, tick, '{:10.3f}, {:10.3f}, {:10.3f}'.format(*data))
             elif command == Commands.CONSOLE_CMD:

@@ -1,4 +1,5 @@
 #! ipyw
+from __future__ import division
 import clr
 #clr.AddReference("System.Xml")
 clr.AddReference("System.Windows.Forms")
@@ -8,7 +9,7 @@ clr.AddReference("WindowsBase")
 
 import wpf
 
-from System import TimeSpan, Environment, Type, Activator
+from System import TimeSpan, Environment, Type, Activator, Exception
 from System.Windows import Application, Window
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
@@ -52,6 +53,22 @@ def findPortal2():
 def demosInDirectory(directory):
     return glob.glob(os.path.join(directory, '*.dem'))
 
+def formatTime(seconds, precision=0):
+    clock_hr = int(seconds // 3600)
+    clock_min = int((seconds // 60) % 60)
+    clock_sec = int(seconds % 60)
+    clock_frac = float(seconds) % 1
+
+    if clock_hr:
+        clock_fmt = '{:d}:{:02d}:{:02d}'.format(clock_hr, clock_min, clock_sec)
+    else:
+        clock_fmt = '{:d}:{:02d}'.format(clock_min, clock_sec)
+
+    if precision:
+        clock_fmt = clock_fmt + '{:.{p}f}'.format(clock_frac, p=precision)[1:]
+
+    return clock_fmt
+
 
 class Portal2LiveTimer(Window):
     def __init__(self):
@@ -92,6 +109,7 @@ class Portal2LiveTimer(Window):
         self.timeStart = time.time()
 
         # demos dealt with
+        self.demoTime = 0
         self.processedDemos = set()
         self.unprocessedDemos = set()
 
@@ -127,8 +145,25 @@ class Portal2LiveTimer(Window):
         allDemos = set(demosInDirectory(self.demoDir))
         self.unprocessedDemos.update(allDemos - self.ignoredDemos - self.processedDemos)
 
-        for demo in self.unprocessedDemos:
-            Debug.WriteLine(demo)
+        for demo_file in self.unprocessedDemos:
+            try:
+                demo1 = sourcedemo.Demo(demo_file)
+                self.demoTime += demo1.get_time()
+                self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
+
+                # resync timers
+                self.timeStart = time.time() - self.demoTime
+                self.update_clock()
+                self.lblTimerSplit.Content = formatTime(self.demoTime, 3)
+
+                self.processedDemos.add(demo_file)
+                self.unprocessedDemos.remove(demo_file)
+            except sourcedemo.DemoProcessError:
+                pass
+            except Exception:
+                # fraking System.Exception doesn't inherit from Python's BaseException
+                # TODO: fix hammering away trying to process demo
+                pass
 
         self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
 
@@ -137,16 +172,7 @@ class Portal2LiveTimer(Window):
         self.clockTime(clock)
 
     def clockTime(self, seconds):
-        clock_hr = int(seconds // 3600)
-        clock_min = int((seconds // 60) % 60)
-        clock_sec = float(seconds % 60)
-
-        if clock_hr:
-            clock_fmt = '{:d}:{:02d}:{:02.0f}'.format(clock_hr, clock_min, clock_sec)
-        else:
-            clock_fmt = '{:d}:{:02.0f}'.format(clock_min, clock_sec)
-
-        self.lblTimerLive.Content = clock_fmt
+        self.lblTimerLive.Content = formatTime(seconds)
 
 
 if __name__ == '__main__':

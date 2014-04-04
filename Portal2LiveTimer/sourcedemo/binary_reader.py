@@ -4,7 +4,8 @@ import struct
 class BinaryReader(io.FileIO):
     def read_binary(self, fmt):
         data = self.read(struct.calcsize(fmt))
-        return struct.unpack(fmt, data)
+        unpacked = struct.unpack(fmt, str(data))
+        return unpacked
 
     def read_char(self):
         return self.read_binary('c')[0]
@@ -21,7 +22,7 @@ class BinaryReader(io.FileIO):
     def read_string(self, length, trim_null=True, to_unicode=False):
         sb = self.read_binary(str(length) + 's')[0]
         if trim_null:
-            sb = sb.rstrip(b'\x00')
+            sb = sb.rstrip('\x00')
         if to_unicode:
             sb = sb.decode('utf-8')
         return sb

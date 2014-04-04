@@ -1,1 +1,1 @@
-from .demo import *
+from .demo import Demo, DemoProcessError

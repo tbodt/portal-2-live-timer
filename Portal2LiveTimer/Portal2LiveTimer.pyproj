@@ -30,9 +30,9 @@
     <Compile Include="p2maps.py" />
     <Compile Include="p2timer.py" />
     <Compile Include="Portal2LiveTimer.pyw" />
-    <Compile Include="SourceDemo\binary_reader.py" />
-    <Compile Include="SourceDemo\demo.py" />
-    <Compile Include="SourceDemo\__init__.py" />
+    <Compile Include="sourcedemo\binary_reader.py" />
+    <Compile Include="sourcedemo\demo.py" />
+    <Compile Include="sourcedemo\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Portal2LiveTimer.xaml">
@@ -67,7 +67,7 @@
     <InterpreterReference Include="{fcc291aa-427c-498c-a4d7-4502d6449b8c}\2.7" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="SourceDemo\" />
+    <Folder Include="sourcedemo\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

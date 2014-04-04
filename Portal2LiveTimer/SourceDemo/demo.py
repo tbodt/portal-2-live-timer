@@ -8,14 +8,12 @@ import io
 from collections import namedtuple
 from pprint import pprint
 
-import enum
-
 from . import binary_reader
 
 MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
 
-class Commands(enum.IntEnum):
+class Commands(object):
     SIGN_ON = 1
     PACKET = 2
     SYNC_TICK = 3

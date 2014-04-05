@@ -3,11 +3,9 @@ Portal 2 Live Timer
 
 A timer for those who complain "Portal 2 isn't timed as RTA".
 
-Usage
------
-1. Tell the program where your Portal 2 demo folder is (if it didn't detect it)
-2. Start recording demos in Portal 2.
-3. Go fast.
+Installation and Use
+--------------------
+[See the wiki][wiki]
 
 What it's doing
 ---------------
@@ -18,3 +16,4 @@ It's broken/It doesn't X
 Report bugs and feature requests [here][issues].
 
 [issues]: https://bitbucket.org/nick_timkovich/portal-2-live-timer/issues
+[wiki]: https://bitbucket.org/nick_timkovich/portal-2-live-timer/wiki

@@ -9,10 +9,25 @@ import io
 from collections import namedtuple
 from pprint import pprint
 
+from System.Diagnostics import Debug
+
 from . import binary_reader
 
 MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
+
+INTRO_START_POS = -8674.000, 1773.000, 28.000
+FINALE_END_POS = 54.1, 159.2, -201.4  # all +/- 1 unit at least, maybe even 2.
+FINALE_END_TICK_OFFSET = 19724 - 20577 # experimentally determined, may be wrong.
+
+def on_the_moon(pos):
+    # check if you're in a specific cylinder of volume and far enough below the floor.
+    x, y, z = pos
+    xf, yf, zf = FINALE_END_POS
+    if (x - xf)**2 + (y - yf)**2 < 50**2 and z < zf:
+        return True
+    else:
+        return False
 
 class Commands(object):
     SIGN_ON = 1
@@ -38,55 +53,47 @@ class Demo():
     TICK_FREQUENCY = 60 # Hz
 
     def __init__(self, filepath):
+        self.demo = binary_reader.BinaryReader(filepath)
+        
         try:
-            self.demo = binary_reader.BinaryReader(filepath)
-            try:
-                magic = self.demo.read_string(8, trim_null=False)
-            except struct.error:
-                raise DemoProcessError('File error, might be empty?')
-            if magic != HEADER_MAGIC:
-                raise DemoProcessError("The specified file doesn't seem to be a demo.")
+            magic = self.demo.read_string(8, trim_null=False)
+        except struct.error:
+            raise DemoProcessError('File error, might be empty?')
+        if magic != HEADER_MAGIC:
+            raise DemoProcessError("The specified file doesn't seem to be a demo.")
 
-            self.header = {
-                    'demo_protocol':    self.demo.read_int32(),
-                    'network_protocol': self.demo.read_int32(),
-                    'server_name':      self.demo.read_string(MAX_OSPATH),
-                    'client_name':      self.demo.read_string(MAX_OSPATH),
-                    'map_name':         self.demo.read_string(MAX_OSPATH),
-                    'game_directory':   self.demo.read_string(MAX_OSPATH),
-                    'playback_time':    self.demo.read_float32(),
-                    'ticks':            self.demo.read_int32(),
-                    'frames':           self.demo.read_int32(),
-                    'sign_on_length':   self.demo.read_int32(),
-                }
+        self.header = {
+                'demo_protocol':    self.demo.read_int32(),
+                'network_protocol': self.demo.read_int32(),
+                'server_name':      self.demo.read_string(MAX_OSPATH),
+                'client_name':      self.demo.read_string(MAX_OSPATH),
+                'map_name':         self.demo.read_string(MAX_OSPATH),
+                'game_directory':   self.demo.read_string(MAX_OSPATH),
+                'playback_time':    self.demo.read_float32(),
+                'ticks':            self.demo.read_int32(),
+                'frames':           self.demo.read_int32(),
+                'sign_on_length':   self.demo.read_int32(),
+            }
 
-            #self.ticks = []
-            self.tick_start = None
-            self.tick_end = None
+        #self.ticks = []
+        self.tick_start = None
+        self.tick_end = None
+        self.tick_end_game = None
 
-            self.process()
+        self.process()
 
-            # release
-        finally:
-            self.demo.close()
+        self.demo.close()
 
     def process(self):
-        # TODO: Remove when done debugging.
         for command, tick, data in self._process_commands():
-            #self.ticks.append(tick)
-
             continue
-            if command == Commands.PACKET:
-                print(command, tick, '{:10.3f}, {:10.3f}, {:10.3f}'.format(*data))
-            elif command == Commands.CONSOLE_CMD:
-                print(command, tick, data)
-            elif command == Commands.USER_CMD:
-                print(command, tick, data)
-            else:
-                print(command, tick)
 
     def get_ticks(self):
-        return self.tick_end - self.tick_start
+        if self.tick_end_game:
+            ticks = self.tick_end_game - self.tick_start
+        else: 
+            ticks = self.tick_end - self.tick_start
+        return ticks
 
     def get_time(self):
         return self.get_ticks()/Demo.TICK_FREQUENCY
@@ -103,7 +110,22 @@ class Demo():
 
             if command == Commands.PACKET and tick >= 0:
                 if self.tick_start is None:
-                    self.tick_start = tick
+                    # handle the intro differently
+                    if self.header['map_name'] == 'sp_a1_intro1':
+                        for datum, check in zip(data, INTRO_START_POS):
+                            if abs(datum - check) > 0.01:
+                                break
+                        else:
+                            # corrected start time
+                            self.tick_start = tick
+                    else:
+                        self.tick_start = tick
+
+                if (self.header['map_name'] == 'sp_a4_finale4' 
+                        and not self.tick_end_game 
+                        and on_the_moon(data)):
+                    self.tick_end_game = tick + FINALE_END_TICK_OFFSET
+                
                 self.tick_end = tick
 
             if (command == Commands.CONSOLE_CMD and 

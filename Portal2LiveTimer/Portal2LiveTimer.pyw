@@ -7,24 +7,29 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
+__version__ = '0.1.0'
+
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window
+from System.Windows import Application, Window, MessageBox
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
+from System import IO
 
 from System.Diagnostics import Debug
 
 import os
 import glob
 import time
+import webbrowser
 
 import sourcedemo
 
 STATE_WAIT = 0
 STATE_RUNNING = 1
 STATE_NOPATH = 2
+STATE_COMPLETE = 3
 
 def findPortal2():
     guess = r'C:\Program Files (x86)\Steam\SteamApps\common\portal 2\portal2'
@@ -69,10 +74,32 @@ def formatTime(seconds, precision=0):
 
     return clock_fmt
 
+BASE_BB = 'https://bitbucket.org/nick_timkovich/portal-2-live-timer/'
+
+def gotoWiki(sender, args):
+    webbrowser.open(BASE_BB + 'wiki')
+
+def gotoSource(sender, args):
+    webbrowser.open(BASE_BB + 'src')
+
+def gotoIssues(sender, args):
+    webbrowser.open(BASE_BB + 'issues?status=new&status=open')
+
+def about(sender, args):
+    MessageBox.Show(
+        """Portal 2 Live Timer
+        
+A timer that uses demos to time Portal 2 single player speedruns and
+playthroughs.  For details of use, see the Bitbucket Wiki (Help/Wiki).
+
+Created by @nicktimko (Alphahelix235 on Twitch)
+Version {}
+""".format(__version__))
 
 class Portal2LiveTimer(Window):
     def __init__(self):
         wpf.LoadComponent(self, 'Portal2LiveTimer.xaml')
+        self.tblkVersion.Text = 'version ' + __version__
         self.state = STATE_NOPATH
 
         self.timer = DispatcherTimer()
@@ -81,6 +108,11 @@ class Portal2LiveTimer(Window):
 
         self.btnDemoDir.Click += self.pickDirectory
         self.btnReset.Click += self.resetClick
+
+        self.mnuHelpHelp.Click += gotoWiki
+        self.mnuHelpIssues.Click += gotoIssues
+        self.mnuHelpSource.Click += gotoSource
+        self.mnuHelpAbout.Click += about
 
         self.pickDialog = FolderBrowserDialog()
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
@@ -93,14 +125,18 @@ class Portal2LiveTimer(Window):
             self.txtDemoDir.Text = self.demoDir
             self.transitionWait()
 
-        self.timer.Start()
-
     def transitionWait(self):
         self.state = STATE_WAIT
         self.lblStatus.Content = "Waiting for demo..."
         self.lblLastMap.Content = "(none)"
-        self.ignoredDemos = set(demosInDirectory(self.demoDir))
         self.clockTime(0)
+        self.demoTime = 0
+        self.timer.Start()
+        
+        # demos dealt with
+        self.ignoredDemos = set(demosInDirectory(self.demoDir))
+        self.processedDemos = set()
+        self.unprocessedDemos = set()
 
         Debug.WriteLine('{} ignored demos'.format(len(self.ignoredDemos)))
 
@@ -109,10 +145,11 @@ class Portal2LiveTimer(Window):
         self.lblStatus.Content = "Monitoring..."
         self.timeStart = time.time()
 
-        # demos dealt with
-        self.demoTime = 0
-        self.processedDemos = set()
-        self.unprocessedDemos = set()
+    def transitionComplete(self):
+        self.state = STATE_COMPLETE
+        self.lblStatus.Content = "Run Complete! ({} demos)".format(len(self.processedDemos))
+        self.lblTimerLive.Content = formatTime(self.demoTime)
+        self.timer.Stop()
 
     def pickDirectory(self, sender, args):
         result = self.pickDialog.ShowDialog()
@@ -129,7 +166,8 @@ class Portal2LiveTimer(Window):
         return {
                 STATE_WAIT: self.updateWait,
                 STATE_RUNNING: self.updateRunning,
-                STATE_NOPATH: lambda: None
+                STATE_NOPATH: lambda: None,
+                STATE_COMPLETE: lambda: None,
             }[self.state]()
 
     def updateWait(self):
@@ -148,25 +186,27 @@ class Portal2LiveTimer(Window):
 
         for demo_file in self.unprocessedDemos:
             try:
+                info = IO.FileInfo(demo_file)
+                if not info.Length: 
+                    break
+
                 demo1 = sourcedemo.Demo(demo_file)
                 self.demoTime += demo1.get_time()
                 self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
-                # resync timers
+                # resync timer and update split
                 self.timeStart = time.time() - self.demoTime
                 self.update_clock()
                 self.lblTimerSplit.Content = formatTime(self.demoTime, 3)
 
                 self.processedDemos.add(demo_file)
                 self.unprocessedDemos.remove(demo_file)
+                if demo1.tick_end_game:
+                    self.transitionComplete()
+                else:
+                    self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
             except sourcedemo.DemoProcessError:
                 pass
-            except Exception:
-                # fraking System.Exception doesn't inherit from Python's BaseException
-                # TODO: fix hammering away trying to process demo
-                pass
-
-        self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
 
     def update_clock(self):
         clock = time.time() - self.timeStart
@@ -174,7 +214,6 @@ class Portal2LiveTimer(Window):
 
     def clockTime(self, seconds):
         self.lblTimerLive.Content = formatTime(seconds)
-
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

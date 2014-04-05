@@ -59,22 +59,12 @@ class Demo():
         self.tick_start = None
         self.tick_end = None
 
-        self.process()
+        #self.process()
 
-    def process(self):
-        # TODO: Remove when done debugging.
-        for command, tick, data in itertools.islice(self._process_commands(), 2**9):
-            #self.ticks.append(tick)
-
-            #continue
-            if command == Commands.PACKET:
-                print(command, tick, '{:10.3f}, {:10.3f}, {:10.3f}'.format(*data))
-            elif command == Commands.CONSOLE_CMD:
-                print(command, tick, data)
-            elif command == Commands.USER_CMD:
-                print(command, tick, data)
-            else:
-                print(command, tick)
+    def process(self, callbacks=None):
+        for command, tick, data in self._process_commands():
+            if callbacks and command in callbacks:
+                callbacks[command](tick, data)
 
     def get_ticks(self):
         return self.tick_end - self.tick_start

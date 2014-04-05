@@ -9,7 +9,7 @@ clr.AddReference("WindowsBase")
 
 clr.AddReferenceToFileAndPath("IronPython.Wpf.dll")
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 import wpf
 
@@ -463,7 +463,7 @@ class Portal2LiveTimer(Window):
                     self.transitionComplete()
                 else:
                     self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
-            except DemoProcessError:
+            except (DemoProcessError, IOError):
                 pass
 
     def update_clock(self):

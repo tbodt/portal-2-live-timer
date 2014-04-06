@@ -26,6 +26,18 @@ class Commands(enum.IntEnum):
     CUSTOM_DATA = 8
     STRING_TABLES = 9
 
+COMMAND_NAME = {
+    1: 'sign_on',
+    2: 'packet',
+    3: 'sync_tick',
+    4: 'console_cmd',
+    5: 'user_cmd',
+    6: 'datatables',
+    7: 'stop',
+    8: 'custom_data',
+    9: 'string_tables',
+}
+
 class Demo():
     """
     Read a Source-engine DEM (Demo) file.

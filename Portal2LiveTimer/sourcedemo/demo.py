@@ -17,8 +17,14 @@ MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
 
 INTRO_START_POS = -8674.000, 1773.000, 28.000
-FINALE_END_POS = 54.1, 159.2, -201.4  # all +/- 1 unit at least, maybe even 2.
-FINALE_END_TICK_OFFSET = 19724 - 20577 # experimentally determined, may be wrong.
+INTRO_MAGIC_UNKNOWN_NUMBER = 3330 # second int32 in the user cmd packet
+
+# best guess. you can move at ~2-3 units/tick, so don't check exactly.
+FINALE_END_POS = 54.1, 159.2, -201.4
+
+# how many ticks from last portal shot to being at the checkpoint.
+# experimentally determined, may be wrong.
+FINALE_END_TICK_OFFSET = -853 
 
 def on_the_moon(pos):
     # check if you're in a specific cylinder of volume and far enough below the floor.
@@ -28,6 +34,13 @@ def on_the_moon(pos):
         return True
     else:
         return False
+
+def at_spawn(pos):
+    # check if at the spawn coordinate for sp_a1_intro1
+    for datum, check in zip(pos, INTRO_START_POS):
+        if abs(datum - check) > 0.01:
+            return False
+    return True
 
 class Commands(object):
     SIGN_ON = 1
@@ -75,24 +88,30 @@ class Demo():
                 'sign_on_length':   self.demo.read_int32(),
             }
 
-        #self.ticks = []
         self.tick_start = None
         self.tick_end = None
-        self.tick_end_game = None
+
+        self.tick_start_game = None # exception for sp_a1_intro1
+        self.tick_end_game = None   # exception for sp_a4_finale4
 
         self.process()
-
         self.demo.close()
 
     def process(self):
         for command, tick, data in self._process_commands():
             continue
+        
+        self.tick_start = self.tick_start_game if self.tick_start_game else self.tick_start
+        self.tick_end = self.tick_end_game if self.tick_end_game else self.tick_end
 
     def get_ticks(self):
-        if self.tick_end_game:
-            ticks = self.tick_end_game - self.tick_start
-        else: 
-            ticks = self.tick_end - self.tick_start
+        assert self.tick_start is not None, "tick_start was None"
+        assert self.tick_end is not None, "tick_end was None"
+
+        ticks = self.tick_end - self.tick_start
+
+        Debug.WriteLine('Ticks for map {:25s}: {} ({} to {})'.format(self.header['map_name'], ticks, self.tick_start, self.tick_end))
+
         return ticks
 
     def get_time(self):
@@ -110,23 +129,23 @@ class Demo():
 
             if command == Commands.PACKET and tick >= 0:
                 if self.tick_start is None:
-                    # handle the intro differently
-                    if self.header['map_name'] == 'sp_a1_intro1':
-                        for datum, check in zip(data, INTRO_START_POS):
-                            if abs(datum - check) > 0.01:
-                                break
-                        else:
-                            # corrected start time
-                            self.tick_start = tick
-                    else:
-                        self.tick_start = tick
-
+                    self.tick_start = tick
+                self.tick_end = tick
+                
+                # Finale exception
                 if (self.header['map_name'] == 'sp_a4_finale4' 
                         and not self.tick_end_game 
                         and on_the_moon(data)):
                     self.tick_end_game = tick + FINALE_END_TICK_OFFSET
-                
-                self.tick_end = tick
+
+            elif command == Commands.USER_CMD and tick >= 0:                
+                # Intro exception
+                if (self.header['map_name'] == 'sp_a1_intro1'
+                        and self.tick_start_game is None):
+                    if data[1] >= INTRO_MAGIC_UNKNOWN_NUMBER:
+                        # because crosshair would appear the next frame (2 ticks)
+                        self.tick_start_game = tick
+
                 
             yield command, tick, data
 
@@ -171,8 +190,10 @@ class Demo():
         """User command: Unknown format"""
         self.demo.skip(4) # unknown
         data_len = self.demo.read_int32()
-        raw_data = self.demo.read_binary('{}s'.format(data_len))[0]
-        return raw_data
+        assert data_len >= 8, "unexpectedly short data length"
+        unk1, unk2 = self.demo.read_binary('ii')
+        remainder = self.demo.read_binary('{}s'.format(data_len - 8))[0]
+        return unk1, unk2, remainder
 
     def _process_data_tables(self):
         """Data tables command: Unimplemented"""

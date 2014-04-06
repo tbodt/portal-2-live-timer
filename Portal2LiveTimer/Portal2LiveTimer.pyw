@@ -7,12 +7,12 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox
+from System.Windows import Application, Window, MessageBox, Clipboard
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
 from System import IO
@@ -90,7 +90,7 @@ def about(sender, args):
         """Portal 2 Live Timer
         
 A timer that uses demos to time Portal 2 single player speedruns and
-playthroughs.  For details of use, see the Bitbucket Wiki (Help/Wiki).
+playthroughs.  For details of use, see the Bitbucket Wiki (Help / Usage).
 
 Created by @nicktimko (Alphahelix235 on Twitch)
 Version {}
@@ -109,21 +109,26 @@ class Portal2LiveTimer(Window):
         self.btnDemoDir.Click += self.pickDirectory
         self.btnReset.Click += self.resetClick
 
+        self.mnuEditCopy.Click += self.copyDemoData
+        self.mnuViewOntop.Click += self.setOnTop
         self.mnuHelpHelp.Click += gotoWiki
         self.mnuHelpIssues.Click += gotoIssues
         self.mnuHelpSource.Click += gotoSource
         self.mnuHelpAbout.Click += about
-        self.mnuViewOntop.Click += self.setOnTop
 
         self.pickDialog = FolderBrowserDialog()
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
         self.pickDialog.ShowNewFolderButton = False
         self.pickDialog.RootFolder = Environment.SpecialFolder.MyComputer
         
+        self.demoData = []
+
         portalPath = findPortal2()
         if portalPath:
             self.demoDir = portalPath
+            self.pickDialog.SelectedPath = self.demoDir
             self.txtDemoDir.Text = self.demoDir
+            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def transitionWait(self):
@@ -133,6 +138,7 @@ class Portal2LiveTimer(Window):
         self.clockTime(0)
         self.splitTime(0)
         self.demoTime = 0
+        self.demoData = []
         self.timer.Start()
         
         # demos dealt with
@@ -153,6 +159,11 @@ class Portal2LiveTimer(Window):
         self.lblTimerLive.Content = formatTime(self.demoTime)
         self.timer.Stop()
 
+    def copyDemoData(self, sender, args):
+        tsv = 'map\tstart tick\tend tick\n'
+        tsv += '\n'.join(['\t'.join(str(f) for f in demo) for demo in self.demoData])
+        Clipboard.SetText(tsv)
+
     def setOnTop(self, sender, args):
         self.Topmost = self.mnuViewOntop.IsChecked
 
@@ -161,6 +172,7 @@ class Portal2LiveTimer(Window):
         if result == DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
             self.txtDemoDir.Text = self.demoDir
+            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):
@@ -204,14 +216,17 @@ class Portal2LiveTimer(Window):
                 self.update_clock()
                 self.splitTime(self.demoTime)
 
+                self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
+
                 self.processedDemos.add(demo_file)
-                self.unprocessedDemos.remove(demo_file)
                 if demo1.tick_end_game:
                     self.transitionComplete()
-                else:
-                    self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
             except (sourcedemo.DemoProcessError, IOError):
                 pass
+
+        self.unprocessedDemos = self.unprocessedDemos - self.processedDemos
+        if self.state == STATE_RUNNING:
+            self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
 
     def update_clock(self):
         clock = time.time() - self.timeStart
@@ -221,7 +236,9 @@ class Portal2LiveTimer(Window):
         self.lblTimerLive.Content = formatTime(seconds)
 
     def splitTime(self, seconds):
-        self.lblTimerSplit.Content = formatTime(seconds, 3)
+        timef = formatTime(seconds, 3)
+        self.lblTimerSplit.Content = timef[:-4]
+        self.lblTimerSplitMS.Content = timef[-3:]
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

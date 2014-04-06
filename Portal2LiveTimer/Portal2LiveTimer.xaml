@@ -14,7 +14,7 @@
                 <MenuItem Header="_Copy map/time data to clipboard" IsEnabled="False"/>
             </MenuItem>
             <MenuItem Header="_View" Margin="2">
-                <MenuItem x:Name="mnuViewOntop"  Header="_Always on top" IsCheckable="True"/>
+                <MenuItem x:Name="mnuViewOntop"  Header="_Always on top" IsCheckable="True" Foreground="Black"/>
             </MenuItem>
             <MenuItem Header="_Help" Margin="2">
                 <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>

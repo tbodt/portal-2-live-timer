@@ -7,7 +7,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 import wpf
 
@@ -169,11 +169,6 @@ class Demo():
                     self.tick_end_game = tick + FINALE_END_TICK_OFFSET
                 
                 self.tick_end = tick
-
-            if (command == Commands.CONSOLE_CMD and 
-                    data == b'ss_force_primary_fullscreen 0'):
-                print(tick)
-                self.tick_start = tick
 
             yield command, tick, data
 

@@ -7,7 +7,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.0'
+__version__ = '0.1.2'
 
 import wpf
 
@@ -113,6 +113,7 @@ class Portal2LiveTimer(Window):
         self.mnuHelpIssues.Click += gotoIssues
         self.mnuHelpSource.Click += gotoSource
         self.mnuHelpAbout.Click += about
+        self.mnuViewOntop.Click += self.setOnTop
 
         self.pickDialog = FolderBrowserDialog()
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
@@ -130,6 +131,7 @@ class Portal2LiveTimer(Window):
         self.lblStatus.Content = "Waiting for demo..."
         self.lblLastMap.Content = "(none)"
         self.clockTime(0)
+        self.splitTime(0)
         self.demoTime = 0
         self.timer.Start()
         
@@ -150,6 +152,9 @@ class Portal2LiveTimer(Window):
         self.lblStatus.Content = "Run Complete! ({} demos)".format(len(self.processedDemos))
         self.lblTimerLive.Content = formatTime(self.demoTime)
         self.timer.Stop()
+
+    def setOnTop(self, sender, args):
+        self.Topmost = self.mnuViewOntop.IsChecked
 
     def pickDirectory(self, sender, args):
         result = self.pickDialog.ShowDialog()
@@ -197,7 +202,7 @@ class Portal2LiveTimer(Window):
                 # resync timer and update split
                 self.timeStart = time.time() - self.demoTime
                 self.update_clock()
-                self.lblTimerSplit.Content = formatTime(self.demoTime, 3)
+                self.splitTime(self.demoTime)
 
                 self.processedDemos.add(demo_file)
                 self.unprocessedDemos.remove(demo_file)
@@ -205,7 +210,7 @@ class Portal2LiveTimer(Window):
                     self.transitionComplete()
                 else:
                     self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
-            except sourcedemo.DemoProcessError:
+            except (sourcedemo.DemoProcessError, IOError):
                 pass
 
     def update_clock(self):
@@ -214,6 +219,9 @@ class Portal2LiveTimer(Window):
 
     def clockTime(self, seconds):
         self.lblTimerLive.Content = formatTime(seconds)
+
+    def splitTime(self, seconds):
+        self.lblTimerSplit.Content = formatTime(seconds, 3)
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

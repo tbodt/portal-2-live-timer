@@ -1,18 +1,17 @@
 #! ipyw
 from __future__ import division
 import clr
-#clr.AddReference("System.Xml")
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox
+from System.Windows import Application, Window, MessageBox, Clipboard
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
 from System import IO
@@ -21,12 +20,16 @@ from System.Text import ASCIIEncoding
 from System.Diagnostics import Debug
 
 import os
+import itertools
 import glob
 import time
 import webbrowser
 import io
 import struct
+from collections import namedtuple
+from pprint import pprint
 
+######## binary_reader.py ###########################################
 class BinaryReader(io.FileIO):
     def read_binary(self, fmt):
         data = self.read(struct.calcsize(fmt))
@@ -56,12 +59,19 @@ class BinaryReader(io.FileIO):
     def skip(self, delta):
         self.seek(delta, io.SEEK_CUR)
 
+######## demo.py ###########################################
 MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
 
 INTRO_START_POS = -8674.000, 1773.000, 28.000
-FINALE_END_POS = 54.1, 159.2, -201.4  # all +/- 1 unit at least, maybe even 2.
-FINALE_END_TICK_OFFSET = 19724 - 20577 # experimentally determined, may be wrong.
+INTRO_MAGIC_UNKNOWN_NUMBER = 3330 # second int32 in the user cmd packet
+
+# best guess. you can move at ~2-3 units/tick, so don't check exactly.
+FINALE_END_POS = 54.1, 159.2, -201.4
+
+# how many ticks from last portal shot to being at the checkpoint.
+# experimentally determined, may be wrong.
+FINALE_END_TICK_OFFSET = -853 
 
 def on_the_moon(pos):
     # check if you're in a specific cylinder of volume and far enough below the floor.
@@ -71,6 +81,13 @@ def on_the_moon(pos):
         return True
     else:
         return False
+
+def at_spawn(pos):
+    # check if at the spawn coordinate for sp_a1_intro1
+    for datum, check in zip(pos, INTRO_START_POS):
+        if abs(datum - check) > 0.01:
+            return False
+    return True
 
 class Commands(object):
     SIGN_ON = 1
@@ -86,6 +103,7 @@ class Commands(object):
 
 class DemoProcessError(Exception):
     pass
+
 
 class Demo():
     """
@@ -117,24 +135,30 @@ class Demo():
                 'sign_on_length':   self.demo.read_int32(),
             }
 
-        #self.ticks = []
         self.tick_start = None
         self.tick_end = None
-        self.tick_end_game = None
+
+        self.tick_start_game = None # exception for sp_a1_intro1
+        self.tick_end_game = None   # exception for sp_a4_finale4
 
         self.process()
-
         self.demo.close()
 
     def process(self):
         for command, tick, data in self._process_commands():
             continue
+        
+        self.tick_start = self.tick_start_game if self.tick_start_game else self.tick_start
+        self.tick_end = self.tick_end_game if self.tick_end_game else self.tick_end
 
     def get_ticks(self):
-        if self.tick_end_game:
-            ticks = self.tick_end_game - self.tick_start
-        else: 
-            ticks = self.tick_end - self.tick_start
+        assert self.tick_start is not None, "tick_start was None"
+        assert self.tick_end is not None, "tick_end was None"
+
+        ticks = self.tick_end - self.tick_start
+
+        Debug.WriteLine('Ticks for map {:25s}: {} ({} to {})'.format(self.header['map_name'], ticks, self.tick_start, self.tick_end))
+
         return ticks
 
     def get_time(self):
@@ -152,24 +176,24 @@ class Demo():
 
             if command == Commands.PACKET and tick >= 0:
                 if self.tick_start is None:
-                    # handle the intro differently
-                    if self.header['map_name'] == 'sp_a1_intro1':
-                        for datum, check in zip(data, INTRO_START_POS):
-                            if abs(datum - check) > 0.01:
-                                break
-                        else:
-                            # corrected start time
-                            self.tick_start = tick
-                    else:
-                        self.tick_start = tick
-
+                    self.tick_start = tick
+                self.tick_end = tick
+                
+                # Finale exception
                 if (self.header['map_name'] == 'sp_a4_finale4' 
                         and not self.tick_end_game 
                         and on_the_moon(data)):
                     self.tick_end_game = tick + FINALE_END_TICK_OFFSET
-                
-                self.tick_end = tick
 
+            elif command == Commands.USER_CMD and tick >= 0:                
+                # Intro exception
+                if (self.header['map_name'] == 'sp_a1_intro1'
+                        and self.tick_start_game is None):
+                    if data[1] >= INTRO_MAGIC_UNKNOWN_NUMBER:
+                        # because crosshair would appear the next frame (2 ticks)
+                        self.tick_start_game = tick
+
+                
             yield command, tick, data
 
     def _process_command(self, command):
@@ -213,8 +237,10 @@ class Demo():
         """User command: Unknown format"""
         self.demo.skip(4) # unknown
         data_len = self.demo.read_int32()
-        raw_data = self.demo.read_binary('{}s'.format(data_len))[0]
-        return raw_data
+        assert data_len >= 8, "unexpectedly short data length"
+        unk1, unk2 = self.demo.read_binary('ii')
+        remainder = self.demo.read_binary('{}s'.format(data_len - 8))[0]
+        return unk1, unk2, remainder
 
     def _process_data_tables(self):
         """Data tables command: Unimplemented"""
@@ -233,6 +259,7 @@ class Demo():
         raw_data = self.demo.read_binary('{}s'.format(data_len))[0]
         return raw_data
 
+######## Portal2LiveTimer.xaml ###########################################
 xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
 <Window 
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
@@ -240,14 +267,14 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
        Title="Portal 2 Live Timer" ResizeMode="CanMinimize" Width="198" Height="338">
     <DockPanel>
-        <Menu DockPanel.Dock="Top" Foreground="#FFF0F0F0">
+        <Menu DockPanel.Dock="Top" Foreground="#FFAEAEAE">
             <Menu.Background>
                 <LinearGradientBrush EndPoint="0,1" StartPoint="0,0">
                     <GradientStop Color="#FF3C3C3C"/>
                 </LinearGradientBrush>
             </Menu.Background>
             <MenuItem Header="_Edit" Margin="2">
-                <MenuItem Header="_Copy map/time data to clipboard" IsEnabled="False"/>
+                <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
             </MenuItem>
             <MenuItem Header="_View" Margin="2">
                 <MenuItem x:Name="mnuViewOntop"  Header="_Always on top" IsCheckable="True" Foreground="Black"/>
@@ -262,7 +289,7 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
             </MenuItem>
         </Menu>
         <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem Background="#FF3C3C3C" Foreground="White">
+            <StatusBarItem Background="#FF3C3C3C" Foreground="#AAA">
                 <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
             </StatusBarItem>
         </StatusBar>
@@ -270,26 +297,38 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
             <Grid.Background>
                 <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                     <GradientStop Color="#FF1B1B1B" Offset="1"/>
-                    <GradientStop Color="#FF232323" Offset="0.703"/>
+                    <GradientStop Color="#FF232323" Offset="0.687"/>
                 </LinearGradientBrush>
             </Grid.Background>
-            <Label x:Name="lblTimerLive" Content="0:00" Margin="0,13,7,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-            <Button x:Name="btnDemoDir" Content="Demo Directory" HorizontalAlignment="Right" Margin="0,227,10,0" VerticalAlignment="Top" Width="94" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" BorderBrush="{DynamicResource {x:Static SystemColors.DesktopBrushKey}}"/>
+            <Label Content="Estimated Time" Margin="0,7,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
+            <Label x:Name="lblTimerLive" Content="0:00" Margin="0,12,6,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+
+            <Label Content="Last Demo Split" Margin="0,77,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
+            <Label x:Name="lblTimerSplit" Content="0:00" Margin="0,88,37,0" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+            <Label x:Name="lblTimerSplitMS" Content="000" Margin="0,94,7,0" VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+
+            <Label Content="Last Map" HorizontalAlignment="Right" Margin="0,135,10,0" VerticalAlignment="Top" Foreground="#DDD"/>
             <Label x:Name="lblLastMap" Content="_sp_a4_laser_catapult" Margin="0,150,10,0" VerticalAlignment="Top" FontSize="16" Height="42" HorizontalAlignment="Right" Foreground="White" FontWeight="Bold"/>
-            <Label Content="Last Map" HorizontalAlignment="Right" Margin="0,135,10,0" VerticalAlignment="Top" Foreground="#FFD4D4D4"/>
-            <Label Content="Estimated Time" Margin="0,7,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#FFD1D1D1"/>
-            <Label Content="Last Demo Split" Margin="0,77,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#FFE8E8E8"/>
-            <Label x:Name="lblTimerSplit" Content="0:00.000" Margin="0,88,10,0" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-            <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
-            <Label Content="Status" Margin="0,180,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#FFBBBBBB"/>
+
+            <Label Content="Status" Margin="0,180,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
             <Label x:Name="lblStatus" Content="Select Portal 2 path." Margin="0,196,10,0" VerticalAlignment="Top" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-            <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Right" Margin="0,227,109,0" VerticalAlignment="Top" Width="64" RenderTransformOrigin="0.581,-0.067" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+
+            <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Right" Margin="0,227,109,0" VerticalAlignment="Top" Width="64"
+                    Focusable="False"
+                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+            <Button x:Name="btnDemoDir" Content="Demo Directory" HorizontalAlignment="Right" Margin="0,227,10,0" VerticalAlignment="Top" Width="94"
+                    Focusable="False"
+                    ToolTipService.InitialShowDelay="0" ToolTip="Select the directory where demos are saved." 
+                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+            <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
+            
+
         </Grid>
     </DockPanel>
 </Window> 
 """))
-#xamlStream.Seek(0, IO.SeekOrigin.Begin)
 
+######## Portal2LiveTimer.pyw ###########################################
 STATE_WAIT = 0
 STATE_RUNNING = 1
 STATE_NOPATH = 2
@@ -354,7 +393,7 @@ def about(sender, args):
         """Portal 2 Live Timer
         
 A timer that uses demos to time Portal 2 single player speedruns and
-playthroughs.  For details of use, see the Bitbucket Wiki (Help/Wiki).
+playthroughs.  For details of use, see the Bitbucket Wiki (Help / Usage).
 
 Created by @nicktimko (Alphahelix235 on Twitch)
 Version {}
@@ -373,21 +412,26 @@ class Portal2LiveTimer(Window):
         self.btnDemoDir.Click += self.pickDirectory
         self.btnReset.Click += self.resetClick
 
+        self.mnuEditCopy.Click += self.copyDemoData
+        self.mnuViewOntop.Click += self.setOnTop
         self.mnuHelpHelp.Click += gotoWiki
         self.mnuHelpIssues.Click += gotoIssues
         self.mnuHelpSource.Click += gotoSource
         self.mnuHelpAbout.Click += about
-        self.mnuViewOntop.Click += self.setOnTop
 
         self.pickDialog = FolderBrowserDialog()
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
         self.pickDialog.ShowNewFolderButton = False
         self.pickDialog.RootFolder = Environment.SpecialFolder.MyComputer
         
+        self.demoData = []
+
         portalPath = findPortal2()
         if portalPath:
             self.demoDir = portalPath
+            self.pickDialog.SelectedPath = self.demoDir
             self.txtDemoDir.Text = self.demoDir
+            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def transitionWait(self):
@@ -397,6 +441,7 @@ class Portal2LiveTimer(Window):
         self.clockTime(0)
         self.splitTime(0)
         self.demoTime = 0
+        self.demoData = []
         self.timer.Start()
         
         # demos dealt with
@@ -417,6 +462,11 @@ class Portal2LiveTimer(Window):
         self.lblTimerLive.Content = formatTime(self.demoTime)
         self.timer.Stop()
 
+    def copyDemoData(self, sender, args):
+        tsv = 'map\tstart tick\tend tick\n'
+        tsv += '\n'.join(['\t'.join(str(f) for f in demo) for demo in self.demoData])
+        Clipboard.SetText(tsv)
+
     def setOnTop(self, sender, args):
         self.Topmost = self.mnuViewOntop.IsChecked
 
@@ -425,6 +475,7 @@ class Portal2LiveTimer(Window):
         if result == DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
             self.txtDemoDir.Text = self.demoDir
+            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):
@@ -468,14 +519,17 @@ class Portal2LiveTimer(Window):
                 self.update_clock()
                 self.splitTime(self.demoTime)
 
+                self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
+
                 self.processedDemos.add(demo_file)
-                self.unprocessedDemos.remove(demo_file)
                 if demo1.tick_end_game:
                     self.transitionComplete()
-                else:
-                    self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
             except (DemoProcessError, IOError):
                 pass
+
+        self.unprocessedDemos = self.unprocessedDemos - self.processedDemos
+        if self.state == STATE_RUNNING:
+            self.lblStatus.Content = "Monitoring ({}+{} demos)...".format(len(self.processedDemos), len(self.unprocessedDemos))
 
     def update_clock(self):
         clock = time.time() - self.timeStart
@@ -485,7 +539,9 @@ class Portal2LiveTimer(Window):
         self.lblTimerLive.Content = formatTime(seconds)
 
     def splitTime(self, seconds):
-        self.lblTimerSplit.Content = formatTime(seconds, 3)
+        timef = formatTime(seconds, 3)
+        self.lblTimerSplit.Content = timef[:-4]
+        self.lblTimerSplitMS.Content = timef[-3:]
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

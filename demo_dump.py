@@ -1,4 +1,5 @@
 #! python3
+from __future__ import print_function
 import argparse
 import struct
 import collections
@@ -51,11 +52,11 @@ class Dumper(object):
         # ???
         fmt += '({:6d}) '.format(struct.unpack('i', data[4:8])[0])
 
-        fmt += ' '.join(format(d, '02X') for d in data[8:])
+        fmt += ' '.join(format(ord(d), '02X') for d in data[8:])
         return fmt
 
     def format_blind(self, data):
-        return (' '.join(format(d, '02X') for d in data) + '\n' +
+        return (' '.join(format(ord(d), '02X') for d in data) + '\n' +
             '                       ' + str(data))
 
 def print_packet(tick, data):

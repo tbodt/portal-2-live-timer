@@ -1,0 +1,65 @@
+﻿<Window 
+       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
+       Title="Portal 2 Live Timer" ResizeMode="CanMinimize" Width="198" Height="338">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Foreground="#FFAEAEAE">
+            <Menu.Background>
+                <LinearGradientBrush EndPoint="0,1" StartPoint="0,0">
+                    <GradientStop Color="#FF3C3C3C"/>
+                </LinearGradientBrush>
+            </Menu.Background>
+            <MenuItem Header="_Edit" Margin="2">
+                <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="_View" Margin="2">
+                <MenuItem x:Name="mnuViewOntop"  Header="_Always on top" IsCheckable="True" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="_Help" Margin="2">
+                <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>
+                <Separator/>
+                <MenuItem x:Name="mnuHelpSource" Header="_Source Repo" Foreground="Black"/>
+                <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests" Foreground="Black"/>
+                <Separator/>
+                <MenuItem x:Name="mnuHelpAbout" Header="_About" Foreground="Black"/>
+            </MenuItem>
+        </Menu>
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem Background="#FF3C3C3C" Foreground="#AAA">
+                <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
+            </StatusBarItem>
+        </StatusBar>
+        <Grid>
+            <Grid.Background>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <GradientStop Color="#FF1B1B1B" Offset="1"/>
+                    <GradientStop Color="#FF232323" Offset="0.687"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Label Content="Estimated Time" Margin="0,7,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
+            <Label x:Name="lblTimerLive" Content="0:00" Margin="0,12,6,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+
+            <Label Content="Last Demo Split" Margin="0,77,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
+            <Label x:Name="lblTimerSplit" Content="0:00" Margin="0,88,37,0" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+            <Label x:Name="lblTimerSplitMS" Content="000" Margin="0,94,7,0" VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+
+            <Label Content="Last Map" HorizontalAlignment="Right" Margin="0,135,10,0" VerticalAlignment="Top" Foreground="#DDD"/>
+            <Label x:Name="lblLastMap" Content="(none)" Margin="0,150,10,0" VerticalAlignment="Top" FontSize="16" Height="42" HorizontalAlignment="Right" Foreground="White" FontWeight="Bold"/>
+
+            <Label Content="Status" Margin="0,180,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
+            <Label x:Name="lblStatus" Content="Select Portal 2 path." Margin="0,196,10,0" VerticalAlignment="Top" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+
+            <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Right" Margin="0,227,109,0" VerticalAlignment="Top" Width="64"
+                    Focusable="False"
+                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+            <Button x:Name="btnDemoDir" Content="Demo Directory" HorizontalAlignment="Right" Margin="0,227,10,0" VerticalAlignment="Top" Width="94"
+                    Focusable="False"
+                    ToolTipService.InitialShowDelay="0" ToolTip="Select the directory where demos are saved." 
+                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+            <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
+            
+
+        </Grid>
+    </DockPanel>
+</Window> 

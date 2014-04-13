@@ -6,12 +6,12 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.5'
+__version__ = '0.1.5+'
 
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard
+from System.Windows import Application, Window, MessageBox, Clipboard, Visibility
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
 from System import IO
@@ -105,8 +105,14 @@ class Portal2LiveTimer(Window):
         self.timer.Interval = TimeSpan(0, 0, 0, 1)
         self.timer.Tick += self.update
 
-        self.btnDemoDir.Click += self.pickDirectory
+        #self.IsMouseDirectlyOverChanged += self.showhideMenu
+        self.MouseEnter += self.showhideMenu
+        self.MouseLeave += self.showhideMenu
+
         self.btnReset.Click += self.resetClick
+
+        self.mnuFileDemos.Click += self.pickDirectory
+        self.mnuFileExit.Click += lambda sender, args: self.Close()
 
         self.mnuEditCopy.Click += self.copyDemoData
         self.mnuViewOntop.Click += self.setOnTop
@@ -127,8 +133,11 @@ class Portal2LiveTimer(Window):
             self.demoDir = portalPath
             self.pickDialog.SelectedPath = self.demoDir
             self.txtDemoDir.Text = self.demoDir
-            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
+
+    def showhideMenu(self, sender, args):
+        self.mnuMain.Visibility = Visibility.Visible if self.IsMouseOver else Visibility.Collapsed
+        # = 'Visible' if self.IsMouseOver else 'Collapsed'
 
     def transitionWait(self):
         self.state = STATE_WAIT
@@ -171,7 +180,6 @@ class Portal2LiveTimer(Window):
         if result == DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
             self.txtDemoDir.Text = self.demoDir
-            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):

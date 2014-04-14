@@ -2,19 +2,16 @@
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
-       Title="Portal 2 Live Timer" Width="195" Height="248"
+       Title="Portal 2 Live Timer" Width="195" Height="208.5"
        MinWidth="195" MinHeight="265">
     <Grid>
         <DockPanel Panel.ZIndex="100">
-            <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top">
-                <Menu.Background>
-                    <LinearGradientBrush EndPoint="0,1" StartPoint="0,0">
-                        <GradientStop Color="#FF3C3C3C"/>
-                    </LinearGradientBrush>
-                </Menu.Background>
+            <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
                 <MenuItem Header="_File" Margin="2">
                     <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory" Foreground="Black"/>
-                    <MenuItem x:Name="mnuFileLoad" Header="_Open Maps/Ticks CSV" IsEnabled="False"/>
+                    <Separator />
+                    <MenuItem x:Name="mnuFileLoad" Header="_Open Maps/Ticks CSV (coming soon)" IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileSave" Header="_Save Maps/Ticks CSV (coming soon)" IsEnabled="False"/>
                     <Separator />
                     <MenuItem x:Name="mnuFileExit" Header="E_xit" Foreground="Black"/>
                 </MenuItem>
@@ -36,21 +33,21 @@
             <Grid />
         </DockPanel>
         <DockPanel>
-            <StatusBar DockPanel.Dock="Bottom" Background="#FF3C3C3C" Foreground="#AAA">
+            <StatusBar DockPanel.Dock="Bottom" Background="#222" Foreground="#999">
                 <StatusBarItem>
                     <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
                 </StatusBarItem>
                 <StatusBarItem HorizontalAlignment="Right">
                     <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Center" Margin="0" 
                 	    Focusable="False" BorderThickness="0"
-                	    Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                	    Foreground="#999" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
                 </StatusBarItem>
             </StatusBar>
             <Grid>
                 <Grid.Background>
                     <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                        <GradientStop Color="#FF1B1B1B" Offset="1"/>
-                        <GradientStop Color="#FF232323" Offset="0.687"/>
+                        <GradientStop Color="#111" Offset="1"/>
+                        <GradientStop Color="#1A1A1A" Offset="0.687"/>
                     </LinearGradientBrush>
                 </Grid.Background>
                 <DockPanel>
@@ -60,7 +57,7 @@
                         <Label x:Name="lblTimerSplit" Content="0:00" Margin="0,103,36,-2" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
                         <Label x:Name="lblTimerSplitMS" Content="000" Margin="0,109,7,0" VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
 
-                        <Label Content="Last Map" Margin="0,72,8,0" HorizontalAlignment="Right" Foreground="#DDD" VerticalAlignment="Top"/>
+                        <Label Content="Last Demo/Split" Margin="0,72,8,0" HorizontalAlignment="Right" Foreground="#DDD" VerticalAlignment="Top"/>
                         <Label x:Name="lblLastMap" Content="_sp_a4_laser_catapult" Margin="0,88,10,0" VerticalAlignment="Top" FontSize="16" HorizontalAlignment="Right" Foreground="White" FontWeight="Bold"/>
                     </Grid>
                     <Grid DockPanel.Dock="Bottom" Height="54">
@@ -69,10 +66,14 @@
 
                         <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
                     </Grid>
-                    <DataGrid Opacity="0">
-                    </DataGrid>
-                </DockPanel>
+                    <Grid>
+                        <Label x:Name="lblTimerSplitDiff" Content="&#x2212;0:00" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#0C0" Margin="0,-12,36,0"/>
+                        <Label x:Name="lblTimerSplitDiffMS" Content="000"  VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#0C0" Margin="0,-6,7,0"/>
 
+                        <DataGrid Opacity="0">
+                        </DataGrid>
+                    </Grid>
+                </DockPanel>
             </Grid>
         </DockPanel>
     </Grid>

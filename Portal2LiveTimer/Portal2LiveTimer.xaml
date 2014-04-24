@@ -2,8 +2,8 @@
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
-       Title="Portal 2 Live Timer" Width="195" Height="208.5"
-       MinWidth="195" MinHeight="265">
+       Title="Portal 2 Live Timer" Width="171" Height="466"
+       MinWidth="195" MinHeight="140">
     <Grid>
         <DockPanel Panel.ZIndex="100">
             <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
@@ -70,10 +70,45 @@
                         <Label x:Name="lblTimerSplitDiff" Content="&#x2212;0:00" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#0C0" Margin="0,-12,36,0"/>
                         <Label x:Name="lblTimerSplitDiffMS" Content="000"  VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#0C0" Margin="0,-6,7,0"/>
 
-                        <DataGrid Opacity="0">
-                        </DataGrid>
+                        <Label Margin="4,31,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>1. <Italic>The Courtsey Call</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,49,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>2. <Italic>The Cold Boot</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,68,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock Foreground="#DDD">3. <Italic>The Return</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,87,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>4. <Italic>The Surprise</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,106,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>5. <Italic>The Escape</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,125,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>6. <Italic>The Fall</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,144,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>7. <Italic>The Reunion</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,163,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>8. <Italic>The Itch</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,182,0,0" HorizontalAlignment="Left" Foreground="#DDD" VerticalAlignment="Top">
+                            <TextBlock>9. <Italic>This Is That Part</Italic></TextBlock>
+                        </Label>
+                        <Label x:Name="lblTCh1" Content="+4.30" HorizontalAlignment="Right" Foreground="#FF0CFF00" Margin="0,31,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh2" Content="&#x2212;42.2" HorizontalAlignment="Right" Foreground="Red" Margin="0,49,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh3" Content="27:33.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,68,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh4" Content="36:44.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,87,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh5" Content="45:55.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,106,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh6" Content="54:06.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,125,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh7" Content="1:03:07.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,144,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh8" Content="1:12:08.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,163,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
+                        <Label x:Name="lblTCh9" Content="1:21:09.0" HorizontalAlignment="Right" Foreground="#DDD" Margin="0,182,4,0" VerticalAlignment="Top" FontWeight="Bold"/>
                     </Grid>
                 </DockPanel>
+
             </Grid>
         </DockPanel>
     </Grid>

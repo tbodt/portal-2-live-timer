@@ -11,7 +11,7 @@ __version__ = '0.1.5a'
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard, Visibility
+from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls
 from System.Windows.Forms import FolderBrowserDialog, DialogResult
 from System.Windows.Threading import DispatcherTimer
 from System import IO
@@ -24,6 +24,7 @@ import time
 import webbrowser
 
 import sourcedemo
+import p2maps
 
 STATE_WAIT = 0
 STATE_RUNNING = 1

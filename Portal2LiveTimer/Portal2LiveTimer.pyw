@@ -117,6 +117,8 @@ class Portal2LiveTimer(Window):
 
         self.mnuEditCopy.Click += self.copyDemoData
         self.mnuViewOntop.Click += self.setOnTop
+        #self.mnuViewBgKey += self.backgroundColor
+        #self.mnuViewBgReset += self.backgroundReset
         self.mnuHelpHelp.Click += gotoWiki
         self.mnuHelpIssues.Click += gotoIssues
         self.mnuHelpSource.Click += gotoSource
@@ -143,7 +145,7 @@ class Portal2LiveTimer(Window):
     def transitionWait(self):
         self.state = STATE_WAIT
         self.lblStatus.Content = "Waiting for demo..."
-        self.lblLastMap.Content = "(none)"
+        #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
         self.demoTime = 0
@@ -217,7 +219,7 @@ class Portal2LiveTimer(Window):
 
                 demo1 = sourcedemo.Demo(demo_file)
                 self.demoTime += demo1.get_time()
-                self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
+                #self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
                 # resync timer and update split
                 self.timeStart = time.time() - self.demoTime

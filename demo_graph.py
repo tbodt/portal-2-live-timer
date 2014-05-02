@@ -26,7 +26,7 @@ def on_xlim_changed(ax):
         # x axis: emit=False avoids infinite loop
         a.set_xlim(xlim, emit=False)
 
-        # y axis: set dataLim, make sure that autoscale in 'y' is on 
+        # y axis: set dataLim, make sure that autoscale in 'y' is on
         corners = (xlim[0], ylim[0]), (xlim[1], ylim[1])
         a.dataLim.update_from_data_xy(corners, ignore=True, updatex=False)
         a.autoscale(enable=True, axis='y')

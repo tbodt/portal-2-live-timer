@@ -6,25 +6,28 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.5a'
+__version__ = '0.1.6'
 
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls
-from System.Windows.Forms import FolderBrowserDialog, DialogResult
+from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls, MessageBoxButton, MessageBoxImage
+from System.Windows.Forms import FolderBrowserDialog, DialogResult, SaveFileDialog, OpenFileDialog
 from System.Windows.Threading import DispatcherTimer
 from System import IO
 
 from System.Diagnostics import Debug
 
 import os
+import itertools
 import glob
 import time
 import webbrowser
+import csv
 
-import sourcedemo
-import p2maps
+from sourcedemo import Demo, DemoProcessError
+from p2maps import MAPS, ALL_MAPS
+from mapsort import parse_csv, DemoParseException, combine_maps, startstop_to_ticks, combine_chapters
 
 STATE_WAIT = 0
 STATE_RUNNING = 1
@@ -57,6 +60,37 @@ def findPortal2():
 
 def demosInDirectory(directory):
     return glob.glob(os.path.join(directory, '*.dem'))
+
+def saveDemoCSV(filename, demodata):
+    header = ['map', 'tick_start', 'tick_stop']
+    with open(filename, 'wb') as f:
+        democsv = csv.writer(f)    
+        democsv.writerow(header)
+        for row in demodata:
+            democsv.writerow(row)
+
+def loadDemoCSV(filename):
+    demodata = parse_csv(filename)
+    demodata = combine_maps(demodata, validate=True)
+    return demodata
+
+def chapterSplits(demodata):
+    map_times = combine_maps(startstop_to_ticks(demodata), validate=False)
+    rec_maps = set([mapn for mapn, ticks in map_times.iteritems() if ticks > 0])
+
+    ch_times = combine_chapters(map_times)
+    ch_splits = [None] * len(MAPS)
+
+    # check that chapters are complete
+    last_ch = 0
+    for i, chapter in enumerate(MAPS):
+        if set(chapter).issubset(rec_maps):
+            ch_splits[i] = last_ch + ch_times[i]
+            last_ch = ch_splits[i]
+        else:
+            break
+
+    return ch_splits
 
 def formatTime(seconds, precision=0):
     clock_hr = int(seconds // 3600)
@@ -113,6 +147,8 @@ class Portal2LiveTimer(Window):
         self.btnReset.Click += self.resetClick
 
         self.mnuFileDemos.Click += self.pickDirectory
+        self.mnuFileSave.Click += self.saveDemoCSV
+        #self.mnuFileLoad.Click += self.loadDemoCSV
         self.mnuFileExit.Click += lambda sender, args: self.Close()
 
         self.mnuEditCopy.Click += self.copyDemoData
@@ -128,8 +164,16 @@ class Portal2LiveTimer(Window):
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
         self.pickDialog.ShowNewFolderButton = False
         self.pickDialog.RootFolder = Environment.SpecialFolder.MyComputer
+
+        self.saveDialog = SaveFileDialog()
+        self.saveDialog.Title = "Select where to save demo timings"
+        self.saveDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
         
         self.demoData = []
+        self.splitData = []
+        self.lblTChs = [self.lblTCh1, self.lblTCh2, self.lblTCh3, 
+                        self.lblTCh4, self.lblTCh5, self.lblTCh6, 
+                        self.lblTCh7, self.lblTCh8, self.lblTCh9]
 
         portalPath = findPortal2()
         if portalPath:
@@ -148,6 +192,7 @@ class Portal2LiveTimer(Window):
         #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
+        self.splitChapters([None] * len(MAPS))
         self.demoTime = 0
         self.demoData = []
         self.timer.Start()
@@ -169,6 +214,17 @@ class Portal2LiveTimer(Window):
         self.lblStatus.Content = "Run Complete! ({} demos)".format(len(self.processedDemos))
         self.lblTimerLive.Content = formatTime(self.demoTime)
         self.timer.Stop()
+
+    def saveDemoCSV(self, sender, args):
+        result = self.saveDialog.ShowDialog()
+        if result == DialogResult.OK and self.saveDialog.FileName:
+            try:
+                saveDemoCSV(self.saveDialog.FileName, self.demoData)
+            except IOError:
+                MessageBox.Show("Error saving file", "Error saving", MessageBoxButton.OK, MessageBoxImage.Error)
+
+    def loadDemoCSV(self, sender, args):
+        pass
 
     def copyDemoData(self, sender, args):
         tsv = 'map\tstart tick\tend tick\n'
@@ -217,7 +273,7 @@ class Portal2LiveTimer(Window):
                 if not info.Length: 
                     break
 
-                demo1 = sourcedemo.Demo(demo_file)
+                demo1 = Demo(demo_file)
                 self.demoTime += demo1.get_time()
                 #self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
@@ -227,11 +283,13 @@ class Portal2LiveTimer(Window):
                 self.splitTime(self.demoTime)
 
                 self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
+                ch_splits = chapterSplits(self.demoData)
+                self.splitChapters(ch_splits)
 
                 self.processedDemos.add(demo_file)
                 if demo1.tick_end_game:
                     self.transitionComplete()
-            except (sourcedemo.DemoProcessError, IOError):
+            except (DemoProcessError, IOError):
                 pass
 
         self.unprocessedDemos = self.unprocessedDemos - self.processedDemos
@@ -249,6 +307,15 @@ class Portal2LiveTimer(Window):
         timef = formatTime(seconds, 3)
         self.lblTimerSplit.Content = timef[:-4]
         self.lblTimerSplitMS.Content = timef[-3:]
+
+    def splitChapters(self, current_splits, past_splits=None):
+        if past_splits is None:
+            for label, split in zip(self.lblTChs, current_splits):
+                if split is not None:
+                    label.Content = formatTime(split/60.0, 1)
+                else:
+                    label.Content = '---'
+
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

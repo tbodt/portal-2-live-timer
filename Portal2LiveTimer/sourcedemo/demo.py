@@ -60,7 +60,7 @@ class DemoProcessError(Exception):
     pass
 
 
-class Demo():
+class Demo(object):
     """
     Read a Source-engine DEM (Demo) file.
     https://developer.valvesoftware.com/wiki/DEM_Format

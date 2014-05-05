@@ -78,6 +78,8 @@ MAPS = [
         'sp_a4_finale2',
         'sp_a4_finale3',
         'sp_a4_finale4',
-        'sp_a5_credits',
+        #'sp_a5_credits',
     ],
 ]
+
+ALL_MAPS = [item for sublist in MAPS for item in sublist]

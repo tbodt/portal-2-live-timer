@@ -28,6 +28,7 @@ import webbrowser
 import io
 import struct
 import csv
+import collections
 from collections import namedtuple
 from pprint import pprint
 
@@ -260,6 +261,194 @@ class Demo(object):
         data_len = self.demo.read_int32()
         raw_data = self.demo.read_binary('{}s'.format(data_len))[0]
         return raw_data
+
+######## p2maps.py ###########################################
+MAPS = [
+    [# Chapter 1 - The Courtesy Call
+        'sp_a1_intro1',
+        'sp_a1_intro2',
+        'sp_a1_intro3',
+        'sp_a1_intro4',
+        'sp_a1_intro5',
+        'sp_a1_intro6',
+        'sp_a1_intro7',
+        'sp_a1_wakeup',
+        'sp_a2_intro',
+    ],
+    [# Chapter 2 - The Cold Boot
+        'sp_a2_laser_intro',
+        'sp_a2_laser_stairs',
+        'sp_a2_dual_lasers',
+        'sp_a2_laser_over_goo',
+        'sp_a2_catapult_intro',
+        'sp_a2_trust_fling',
+        'sp_a2_pit_flings',
+        'sp_a2_fizzler_intro',
+    ],
+    [# Chapter 3 - The Return
+        'sp_a2_sphere_peek',
+        'sp_a2_ricochet',
+        'sp_a2_bridge_intro',
+        'sp_a2_bridge_the_gap',
+        'sp_a2_turret_intro',
+        'sp_a2_laser_relays',
+        'sp_a2_turret_blocker',
+        'sp_a2_laser_vs_turret',
+        'sp_a2_pull_the_rug',
+    ],
+    [# Chapter 4 - The Surprise
+        'sp_a2_column_blocker',
+        'sp_a2_laser_chaining',
+        'sp_a2_triple_laser',
+        'sp_a2_bts1',
+        'sp_a2_bts2',
+    ],
+    [# Chapter 5 - The Escape
+        'sp_a2_bts3',
+        'sp_a2_bts4',
+        'sp_a2_bts5',
+        'sp_a2_bts6',
+        'sp_a2_core',
+    ],
+    [# Chapter 6 - The Fall
+        'sp_a3_00',
+        'sp_a3_01',
+        'sp_a3_03',
+        'sp_a3_jump_intro',
+        'sp_a3_bomb_flings',
+        'sp_a3_crazy_box',
+        'sp_a3_transition01',
+    ],
+    [# Chapter 7 - The Reunion
+        'sp_a3_speed_ramp',
+        'sp_a3_speed_flings',
+        'sp_a3_portal_intro',
+        'sp_a3_end',
+    ],
+    [# Chapter 8 - The Itch
+        'sp_a4_intro',
+        'sp_a4_tb_intro',
+        'sp_a4_tb_trust_drop',
+        'sp_a4_tb_wall_button',
+        'sp_a4_tb_polarity',
+        'sp_a4_tb_catch',
+        'sp_a4_stop_the_box',
+        'sp_a4_laser_catapult',
+        'sp_a4_laser_platform',
+        'sp_a4_speed_tb_catch',
+        'sp_a4_jump_polarity',
+    ],
+    [# Chapter 9 - The Part Where...
+        'sp_a4_finale1',
+        'sp_a4_finale2',
+        'sp_a4_finale3',
+        'sp_a4_finale4',
+        #'sp_a5_credits',
+    ],
+]
+    
+######## mapsort.py ###########################################
+ALL_MAPS = list(itertools.chain.from_iterable(MAPS))
+N_MAPS = len(ALL_MAPS)
+
+class DemoParseException(Exception):
+    pass
+
+def parse_csv(file):
+    """
+    Takes a file path and returns a list of 2-tuples with map name and
+    ticks taken.
+
+    Demo file can be 2 or 3 columns and optionally have a header.  The format
+    of a 2-column CSV is assumed to be (map name, ticks), and the 3-column
+    format to be (map name, start tick, end tick)
+    """
+    try:
+        with open(file, 'r') as f:
+            has_header = csv.Sniffer().has_header(f.read(1024))
+            f.seek(0)
+            print(has_header)
+
+            democsv = csv.reader(f)
+            header = next(democsv) if has_header else None
+
+            data = [row for row in democsv]
+    except IOError as e:
+        raise DemoParseException("Could not read file")
+    except csv.Error as e:
+        raise DemoParseException("Could not parse file as CSV")
+
+    problems = []
+
+    data_len = len(data)
+    if data_len == 0:
+        raise DemoParseException("Empty data file")
+
+    field_len = len(header if header else data[0])
+    if not (2 <= field_len <= 3):
+        raise DemoParseException("Data file must have 2 (map/ticks) or 3 (map/start tick/stop tick) fields ({} detected)".format(field_len))
+
+    # make sure it's all the same size
+    for i, row in enumerate(data, start=1):
+        if len(row) != field_len:
+            raise DemoParseException("Row {} is differently sized than other rows ({} long, expected {})".format(i+1 if header else i, len(row), field_len))
+
+    # convert strings into numbers
+    try:
+        if field_len == 3:
+            data = [(mapn, int(stop) - int(start)) for mapn, start, stop in data]
+        elif field_len == 2:
+            data = [(mapn, int(ticks)) for mapn, ticks in data]
+    except ValueError as e:
+        raise DemoParseException("Error converting data, ensure ticks are integers")
+
+    return data
+
+def startstop_to_ticks(data):
+    return [(mapn, stop-start) for mapn, start, stop in data]
+
+def validate_times(map_times, ignore_credits=True):
+    if ignore_credits:
+        missing_maps = set(ALL_MAPS[:-1]) - set(map_times)
+    else:
+        missing_maps = set(ALL_MAPS) - set(map_times)
+    unknown_maps = set(map_times) - set(ALL_MAPS)
+
+    if missing_maps:
+        raise DemoParseException("Data file missing {} map(s) for complete run: {}".format(len(missing_maps), ', '.join(missing_maps)))
+    if unknown_maps:
+        raise DemoParseException("Data file contains {} unrecognized map(s): {}".format(len(unknown_maps), ', '.join(unknown_maps)))
+
+def combine_maps(data, validate=True):
+    # sum ticks
+    map_times = collections.defaultdict(int)
+    for mapn, ticks in data:
+        map_times[mapn] += ticks
+
+    if validate:
+        validate_times(map_times)
+
+    return map_times
+
+def sort_maps(map_times):
+    """
+    Takes a dictionary with maps as keys and ticks as values and returns a
+    sorted list-of-items (tuples) representation.
+    """
+    map_times_sorted = sorted(map_times.items(), key=lambda x: ALL_MAPS.index(x[0]))
+    return map_times_sorted
+
+def combine_chapters(map_times):
+    """
+    Takes a dictionary with maps as keys and ticks as values and returns a
+    list of ticks based on chapters
+    """
+    chapter_times = [0 for _ in MAPS]
+    for i, chapter in enumerate(MAPS):
+        for mapn in chapter:
+            chapter_times[i] += map_times[mapn]
+
+    return chapter_times
 
 ######## Portal2LiveTimer.xaml ###########################################
 xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""

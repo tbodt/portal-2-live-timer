@@ -81,5 +81,3 @@ MAPS = [
         #'sp_a5_credits',
     ],
 ]
-
-ALL_MAPS = [item for sublist in MAPS for item in sublist]

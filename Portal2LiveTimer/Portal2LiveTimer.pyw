@@ -11,7 +11,7 @@ __version__ = '0.1.6'
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls, MessageBoxButton, MessageBoxImage
+from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls, MessageBoxButton, MessageBoxImage, Thickness
 from System.Windows.Forms import FolderBrowserDialog, DialogResult, SaveFileDialog, OpenFileDialog
 from System.Windows.Threading import DispatcherTimer
 from System import IO
@@ -310,11 +310,18 @@ class Portal2LiveTimer(Window):
 
     def splitChapters(self, current_splits, past_splits=None):
         if past_splits is None:
-            for label, split in zip(self.lblTChs, current_splits):
+            highlighted = False
+            for i, (label, split) in enumerate(zip(self.lblTChs, current_splits)):
                 if split is not None:
                     label.Content = formatTime(split/60.0, 1)
                 else:
+                    if not highlighted:
+                        self.rectChHighlight.Margin = Thickness(0, 3 + 20*i, 0, 0)
+                        self.rectChHighlight.Visibility = Visibility.Visible
+                        highlighted = True
                     label.Content = '---'
+            if not highlighted:
+                self.rectChHighlight.Visibility = Visibility.Hidden
 
 
 if __name__ == '__main__':

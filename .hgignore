@@ -6,7 +6,7 @@ __pycache__/
 
 # Visual Studio
 *.suo           # user settings
-*/bin/
+*bin/
 */obj/
 
 # Windows

@@ -11,7 +11,7 @@ from pprint import pprint
 
 from System.Diagnostics import Debug
 
-from . import binary_reader
+from .binary_reader import BinaryReader
 
 MAX_OSPATH = 260
 HEADER_MAGIC = b'HL2DEMO\x00'
@@ -68,7 +68,7 @@ class Demo(object):
     TICK_FREQUENCY = 60 # Hz
 
     def __init__(self, filepath):
-        self.demo = binary_reader.BinaryReader(filepath)
+        self.demo = BinaryReader(filepath)
         
         try:
             magic = self.demo.read_string(8, trim_null=False)

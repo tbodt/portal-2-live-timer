@@ -1,4 +1,5 @@
-#! ipyw
+﻿#! ipyw
+# -*- coding: utf-8 -*-
 from __future__ import division
 import clr
 clr.AddReference("System.Windows.Forms")
@@ -6,13 +7,13 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 import wpf
 
 from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard
-from System.Windows.Forms import FolderBrowserDialog, DialogResult
+from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls, MessageBoxButton, MessageBoxImage, Thickness
+from System.Windows.Forms import FolderBrowserDialog, DialogResult, SaveFileDialog, OpenFileDialog
 from System.Windows.Threading import DispatcherTimer
 from System import IO
 from System.Text import ASCIIEncoding
@@ -26,6 +27,7 @@ import time
 import webbrowser
 import io
 import struct
+import csv
 from collections import namedtuple
 from pprint import pprint
 
@@ -107,7 +109,7 @@ class DemoProcessError(Exception):
     pass
 
 
-class Demo():
+class Demo(object):
     """
     Read a Source-engine DEM (Demo) file.
     https://developer.valvesoftware.com/wiki/DEM_Format
@@ -265,67 +267,162 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
-       Title="Portal 2 Live Timer" ResizeMode="CanMinimize" Width="198" Height="338">
-    <DockPanel>
-        <Menu DockPanel.Dock="Top" Foreground="#FFAEAEAE">
-            <Menu.Background>
-                <LinearGradientBrush EndPoint="0,1" StartPoint="0,0">
-                    <GradientStop Color="#FF3C3C3C"/>
-                </LinearGradientBrush>
-            </Menu.Background>
-            <MenuItem Header="_Edit" Margin="2">
-                <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
-            </MenuItem>
-            <MenuItem Header="_View" Margin="2">
-                <MenuItem x:Name="mnuViewOntop"  Header="_Always on top" IsCheckable="True" Foreground="Black"/>
-            </MenuItem>
-            <MenuItem Header="_Help" Margin="2">
-                <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>
-                <Separator/>
-                <MenuItem x:Name="mnuHelpSource" Header="_Source Repo" Foreground="Black"/>
-                <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests" Foreground="Black"/>
-                <Separator/>
-                <MenuItem x:Name="mnuHelpAbout" Header="_About" Foreground="Black"/>
-            </MenuItem>
-        </Menu>
-        <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem Background="#FF3C3C3C" Foreground="#AAA">
-                <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
-            </StatusBarItem>
-        </StatusBar>
-        <Grid>
-            <Grid.Background>
-                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="#FF1B1B1B" Offset="1"/>
-                    <GradientStop Color="#FF232323" Offset="0.687"/>
-                </LinearGradientBrush>
-            </Grid.Background>
-            <Label Content="Estimated Time" Margin="0,7,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
-            <Label x:Name="lblTimerLive" Content="0:00" Margin="0,12,6,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+       Title="Portal 2 Live Timer" Width="195" Height="426"
+       MinWidth="195" MinHeight="140">
+    <Window.Resources>
+        <Style TargetType="{x:Type Label}">
+            <Setter Property="Foreground" Value="#DDD"/>
+        </Style>
+        <Style x:Key="baseLabel" TargetType="{x:Type Label}">
+            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style x:Key="Heading" TargetType="{x:Type Label}" BasedOn="{StaticResource baseLabel}">
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="Time" TargetType="{x:Type Label}" BasedOn="{StaticResource baseLabel}">
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style x:Key="MainTime" TargetType="{x:Type Label}" BasedOn="{StaticResource Time}">
+            <Setter Property="FontSize" Value="48"/>
+        </Style>
+        <Style x:Key="SplitTime" TargetType="{x:Type Label}" BasedOn="{StaticResource Time}">
+            <Setter Property="FontSize" Value="30"/>
+        </Style>
+        <Style x:Key="SplitTimeMS" TargetType="{x:Type Label}" BasedOn="{StaticResource Time}">
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+        <Style x:Key="ChapterTitle" TargetType="{x:Type Label}" BasedOn="{StaticResource baseLabel}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style x:Key="ChapterTime" TargetType="{x:Type Label}" BasedOn="{StaticResource Time}"/>
+    </Window.Resources>
+    <Grid>
+        <DockPanel Panel.ZIndex="100">
+            <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
+                <MenuItem Header="_File" Margin="2">
+                    <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory" Foreground="Black"/>
+                    <Separator />
+                    <MenuItem x:Name="mnuFileLoad" Header="_Open Maps/Ticks CSV (coming soon)" IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileSave" Header="_Save Maps/Ticks CSV" Foreground="Black"/>
+                    <Separator />
+                    <MenuItem x:Name="mnuFileExit" Header="E_xit" Foreground="Black"/>
+                </MenuItem>
+                <MenuItem Header="_Edit" Margin="2">
+                    <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
+                </MenuItem>
+                <MenuItem Header="_View" Margin="2">
+                    <MenuItem x:Name="mnuViewOntop"  Header="_Always on Top" IsCheckable="True" Foreground="Black"/>
+                </MenuItem>
+                <MenuItem Header="_Help" Margin="2">
+                    <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>
+                    <Separator/>
+                    <MenuItem x:Name="mnuHelpSource" Header="_Source Repo" Foreground="Black"/>
+                    <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests" Foreground="Black"/>
+                    <Separator/>
+                    <MenuItem x:Name="mnuHelpAbout" Header="_About" Foreground="Black"/>
+                </MenuItem>
+            </Menu>
+            <Grid />
+        </DockPanel>
+        <DockPanel>
+            <StatusBar DockPanel.Dock="Bottom" Background="#222" Foreground="#999">
+                <StatusBarItem>
+                    <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
+                </StatusBarItem>
+                <StatusBarItem HorizontalAlignment="Right">
+                    <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Center" Margin="0" 
+                	    Focusable="False" BorderThickness="0"
+                	    Foreground="#999" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                </StatusBarItem>
+            </StatusBar>
+            <Grid>
+                <Grid.Background>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#111" Offset="1"/>
+                        <GradientStop Color="#1A1A1A" Offset="0.687"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Height="128">
+                    <!--<Grid DockPanel.Dock="Top" Height="158">-->
+                        <!-- Main Timing -->
+                        <Label Content="Estimated Time" Margin="0,4,8,0" Style="{StaticResource Heading}"/>
+                        <Label x:Name="lblTimerLive" Content="0:00:00" Margin="0,8,5,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
 
-            <Label Content="Last Demo Split" Margin="0,77,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
-            <Label x:Name="lblTimerSplit" Content="0:00" Margin="0,88,37,0" VerticalAlignment="Top" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-            <Label x:Name="lblTimerSplitMS" Content="000" Margin="0,94,7,0" VerticalAlignment="Top" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+                        <Label Content="After Last Demo" Margin="0,72,8,0" Style="{StaticResource Heading}"/>
+                        <Label x:Name="lblTimerSplit" Style="{StaticResource SplitTime}" Margin="0,82,36,0"
+                               Content="0:00"/>
+                        <Label x:Name="lblTimerSplitMS" Style="{StaticResource SplitTimeMS}" Margin="0,88,7,0" 
+                               Content="000"/>
+                        <Label x:Name="lblTimerSplitDiff" Style="{StaticResource SplitTime}" Foreground="#0C0" Margin="0,112,36,-2" 
+                               Content="−0:00"/>
+                        <Label x:Name="lblTimerSplitDiffMS" Style="{StaticResource SplitTimeMS}" Foreground="#0C0" Margin="0,118,7,0"
+                               Content="000"/>
+                    </Grid>
+                    <Grid DockPanel.Dock="Bottom" Height="50">
+                        <!-- Status -->
+                        <Label Content="Status" Margin="0,-3,8,0" Style="{StaticResource Heading}"/>
+                        <Label x:Name="lblStatus" Content="Select demo path." Margin="0,16,8,0" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
 
-            <Label Content="Last Map" HorizontalAlignment="Right" Margin="0,135,10,0" VerticalAlignment="Top" Foreground="#DDD"/>
-            <Label x:Name="lblLastMap" Content="(none)" Margin="0,150,10,0" VerticalAlignment="Top" FontSize="16" Height="42" HorizontalAlignment="Right" Foreground="White" FontWeight="Bold"/>
+                        <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
+                    </Grid>
+                    <Grid>
+                        <!-- Chapter Splits -->
+                        <Rectangle x:Name="rectChHighlight" Height="20" VerticalAlignment="Top" Margin="0,3,0,0" Grid.ColumnSpan="2">
+                            <Rectangle.Fill>
+                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                    <GradientStop Color="#11444444"/>
+                                    <GradientStop Color="#DD444444" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
 
-            <Label Content="Status" Margin="0,180,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Foreground="#DDD"/>
-            <Label x:Name="lblStatus" Content="Select Portal 2 path." Margin="0,196,10,0" VerticalAlignment="Top" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-
-            <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Right" Margin="0,227,109,0" VerticalAlignment="Top" Width="64"
-                    Focusable="False"
-                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
-            <Button x:Name="btnDemoDir" Content="Demo Directory" HorizontalAlignment="Right" Margin="0,227,10,0" VerticalAlignment="Top" Width="94"
-                    Focusable="False"
-                    ToolTipService.InitialShowDelay="0" ToolTip="Select the directory where demos are saved." 
-                    Background="#FF3C3C3C" Foreground="#AAA" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
-            <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
-            
-
-        </Grid>
-    </DockPanel>
+                        <Label Margin="4,0,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>1. <Italic>The Courtsey Call</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,20,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>2. <Italic>The Cold Boot</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,40,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>3. <Italic>The Return</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,60,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>4. <Italic>The Surprise</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,80,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>5. <Italic>The Escape</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,100,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>6. <Italic>The Fall</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,120,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>7. <Italic>The Reunion</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,140,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>8. <Italic>The Itch</Italic></TextBlock>
+                        </Label>
+                        <Label Margin="4,160,0,0" Style="{StaticResource ChapterTitle}">
+                            <TextBlock>9. <Italic>This Is That Part</Italic></TextBlock>
+                        </Label>
+                        <Label x:Name="lblTCh1" Content="---" Style="{StaticResource ChapterTime}" Margin="0,0,4,0"/>
+                        <Label x:Name="lblTCh2" Content="---" Style="{StaticResource ChapterTime}" Margin="0,20,4,0"/>
+                        <Label x:Name="lblTCh3" Content="---" Style="{StaticResource ChapterTime}" Margin="0,40,4,0"/>
+                        <Label x:Name="lblTCh4" Content="---" Style="{StaticResource ChapterTime}" Margin="0,60,4,0"/>
+                        <Label x:Name="lblTCh5" Content="---" Style="{StaticResource ChapterTime}" Margin="0,80,4,0"/>
+                        <Label x:Name="lblTCh6" Content="---" Style="{StaticResource ChapterTime}" Margin="0,100,4,0"/>
+                        <Label x:Name="lblTCh7" Content="---" Style="{StaticResource ChapterTime}" Margin="0,120,4,0"/>
+                        <Label x:Name="lblTCh8" Content="---" Style="{StaticResource ChapterTime}" Margin="0,140,4,0"/>
+                        <Label x:Name="lblTCh9" Content="---" Style="{StaticResource ChapterTime}" Margin="0,160,4,0"/>
+                    </Grid>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </Grid>
 </Window> 
+
 """))
 
 ######## Portal2LiveTimer.pyw ###########################################
@@ -360,6 +457,37 @@ def findPortal2():
 
 def demosInDirectory(directory):
     return glob.glob(os.path.join(directory, '*.dem'))
+
+def saveDemoCSV(filename, demodata):
+    header = ['map', 'tick_start', 'tick_stop']
+    with open(filename, 'wb') as f:
+        democsv = csv.writer(f)    
+        democsv.writerow(header)
+        for row in demodata:
+            democsv.writerow(row)
+
+def loadDemoCSV(filename):
+    demodata = parse_csv(filename)
+    demodata = combine_maps(demodata, validate=True)
+    return demodata
+
+def chapterSplits(demodata):
+    map_times = combine_maps(startstop_to_ticks(demodata), validate=False)
+    rec_maps = set([mapn for mapn, ticks in map_times.iteritems() if ticks > 0])
+
+    ch_times = combine_chapters(map_times)
+    ch_splits = [None] * len(MAPS)
+
+    # check that chapters are complete
+    last_ch = 0
+    for i, chapter in enumerate(MAPS):
+        if set(chapter).issubset(rec_maps):
+            ch_splits[i] = last_ch + ch_times[i]
+            last_ch = ch_splits[i]
+        else:
+            break
+
+    return ch_splits
 
 def formatTime(seconds, precision=0):
     clock_hr = int(seconds // 3600)
@@ -409,11 +537,21 @@ class Portal2LiveTimer(Window):
         self.timer.Interval = TimeSpan(0, 0, 0, 1)
         self.timer.Tick += self.update
 
-        self.btnDemoDir.Click += self.pickDirectory
+        #self.IsMouseDirectlyOverChanged += self.showhideMenu
+        self.MouseEnter += self.showhideMenu
+        self.MouseLeave += self.showhideMenu
+
         self.btnReset.Click += self.resetClick
+
+        self.mnuFileDemos.Click += self.pickDirectory
+        self.mnuFileSave.Click += self.saveDemoCSV
+        #self.mnuFileLoad.Click += self.loadDemoCSV
+        self.mnuFileExit.Click += lambda sender, args: self.Close()
 
         self.mnuEditCopy.Click += self.copyDemoData
         self.mnuViewOntop.Click += self.setOnTop
+        #self.mnuViewBgKey += self.backgroundColor
+        #self.mnuViewBgReset += self.backgroundReset
         self.mnuHelpHelp.Click += gotoWiki
         self.mnuHelpIssues.Click += gotoIssues
         self.mnuHelpSource.Click += gotoSource
@@ -423,23 +561,35 @@ class Portal2LiveTimer(Window):
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
         self.pickDialog.ShowNewFolderButton = False
         self.pickDialog.RootFolder = Environment.SpecialFolder.MyComputer
+
+        self.saveDialog = SaveFileDialog()
+        self.saveDialog.Title = "Select where to save demo timings"
+        self.saveDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
         
         self.demoData = []
+        self.splitData = []
+        self.lblTChs = [self.lblTCh1, self.lblTCh2, self.lblTCh3, 
+                        self.lblTCh4, self.lblTCh5, self.lblTCh6, 
+                        self.lblTCh7, self.lblTCh8, self.lblTCh9]
 
         portalPath = findPortal2()
         if portalPath:
             self.demoDir = portalPath
             self.pickDialog.SelectedPath = self.demoDir
             self.txtDemoDir.Text = self.demoDir
-            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
+
+    def showhideMenu(self, sender, args):
+        self.mnuMain.Visibility = Visibility.Visible if self.IsMouseOver else Visibility.Collapsed
+        # = 'Visible' if self.IsMouseOver else 'Collapsed'
 
     def transitionWait(self):
         self.state = STATE_WAIT
         self.lblStatus.Content = "Waiting for demo..."
-        self.lblLastMap.Content = "(none)"
+        #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
+        self.splitChapters([None] * len(MAPS))
         self.demoTime = 0
         self.demoData = []
         self.timer.Start()
@@ -462,6 +612,17 @@ class Portal2LiveTimer(Window):
         self.lblTimerLive.Content = formatTime(self.demoTime)
         self.timer.Stop()
 
+    def saveDemoCSV(self, sender, args):
+        result = self.saveDialog.ShowDialog()
+        if result == DialogResult.OK and self.saveDialog.FileName:
+            try:
+                saveDemoCSV(self.saveDialog.FileName, self.demoData)
+            except IOError:
+                MessageBox.Show("Error saving file", "Error saving", MessageBoxButton.OK, MessageBoxImage.Error)
+
+    def loadDemoCSV(self, sender, args):
+        pass
+
     def copyDemoData(self, sender, args):
         tsv = 'map\tstart tick\tend tick\n'
         tsv += '\n'.join(['\t'.join(str(f) for f in demo) for demo in self.demoData])
@@ -475,7 +636,6 @@ class Portal2LiveTimer(Window):
         if result == DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
             self.txtDemoDir.Text = self.demoDir
-            self.btnDemoDir.ToolTip = "Currently set to: " + self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):
@@ -512,7 +672,7 @@ class Portal2LiveTimer(Window):
 
                 demo1 = Demo(demo_file)
                 self.demoTime += demo1.get_time()
-                self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
+                #self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
                 # resync timer and update split
                 self.timeStart = time.time() - self.demoTime
@@ -520,6 +680,8 @@ class Portal2LiveTimer(Window):
                 self.splitTime(self.demoTime)
 
                 self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
+                ch_splits = chapterSplits(self.demoData)
+                self.splitChapters(ch_splits)
 
                 self.processedDemos.add(demo_file)
                 if demo1.tick_end_game:
@@ -542,6 +704,22 @@ class Portal2LiveTimer(Window):
         timef = formatTime(seconds, 3)
         self.lblTimerSplit.Content = timef[:-4]
         self.lblTimerSplitMS.Content = timef[-3:]
+        
+    def splitChapters(self, current_splits, past_splits=None):
+        if past_splits is None:
+            highlighted = False
+            for i, (label, split) in enumerate(zip(self.lblTChs, current_splits)):
+                if split is not None:
+                    label.Content = formatTime(split/60.0, 1)
+                else:
+                    if not highlighted:
+                        self.rectChHighlight.Margin = Thickness(0, 3 + 20*i, 0, 0)
+                        self.rectChHighlight.Visibility = Visibility.Visible
+                        highlighted = True
+                    label.Content = '---'
+            if not highlighted:
+                self.rectChHighlight.Visibility = Visibility.Hidden
+
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

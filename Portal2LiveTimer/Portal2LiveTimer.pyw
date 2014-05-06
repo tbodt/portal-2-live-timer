@@ -214,7 +214,6 @@ class Portal2LiveTimer(Window):
         if portalPath:
             self.demoDir = portalPath
             self.pickDialog.SelectedPath = self.demoDir
-            self.txtDemoDir.Text = self.demoDir
             self.transitionWait()
 
     def showhideMenu(self, sender, args):
@@ -292,7 +291,6 @@ class Portal2LiveTimer(Window):
         result = self.pickDialog.ShowDialog()
         if result == Forms.DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
-            self.txtDemoDir.Text = self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):

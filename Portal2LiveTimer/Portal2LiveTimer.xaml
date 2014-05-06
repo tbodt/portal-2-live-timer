@@ -112,8 +112,6 @@
                         <!-- Status -->
                         <Label Content="Status" Margin="0,-3,8,0" Style="{StaticResource Heading}"/>
                         <Label x:Name="lblStatus" Content="Select demo path." Margin="0,16,8,0" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-
-                        <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
                     </Grid>
                     <Grid>
                         <!-- Chapter Splits -->

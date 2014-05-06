@@ -1,5 +1,4 @@
 ﻿#! ipyw
-# -*- coding: utf-8 -*-
 from __future__ import division
 import clr
 clr.AddReference("System.Windows.Forms")
@@ -7,17 +6,14 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.1.6'
+__version__ = '0.2.0'
 
 import wpf
 
-from System import TimeSpan, Environment, Type, Activator, Exception
-from System.Windows import Application, Window, MessageBox, Clipboard, Visibility, Controls, MessageBoxButton, MessageBoxImage, Thickness
-from System.Windows.Forms import FolderBrowserDialog, DialogResult, SaveFileDialog, OpenFileDialog
+from System import IO, Exception, Windows, TimeSpan, Environment, Type, Activator
+from System.Windows import Application, Window, Forms, Visibility, MessageBoxButton, MessageBoxImage, Media
 from System.Windows.Threading import DispatcherTimer
-from System import IO
 from System.Text import ASCIIEncoding
-
 from System.Diagnostics import Debug
 
 import os
@@ -25,9 +21,9 @@ import itertools
 import glob
 import time
 import webbrowser
+import csv
 import io
 import struct
-import csv
 import collections
 from collections import namedtuple
 from pprint import pprint
@@ -457,7 +453,7 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" 
-       Title="Portal 2 Live Timer" Width="195" Height="426"
+       Title="Portal 2 Live Timer" Width="195" Height="428"
        MinWidth="195" MinHeight="140">
     <Window.Resources>
         <Style TargetType="{x:Type Label}">
@@ -502,9 +498,10 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
                 <MenuItem Header="_FILE" Style="{StaticResource MenuRoot}">
                     <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory"/>
                     <Separator />
-                    <MenuItem x:Name="mnuFileLoad" Header="_Open Splits..." IsEnabled="False"/>
-                    <MenuItem x:Name="mnuFileClose" Header="_Close Splits" IsEnabled="False"/>
-                    <MenuItem x:Name="mnuFileSave" Header="_Save Splits..."/>
+                    <MenuItem x:Name="mnuFileLoad" Header="_Open Splits..."/>
+                    <MenuItem x:Name="mnuFileClose" Header="_Close Splits"/>
+                    <Separator />
+                    <MenuItem x:Name="mnuFileSave" Header="_Save Current Run..."/>
                     <Separator />
                     <MenuItem x:Name="mnuFileExit" Header="E_xit"/>
                 </MenuItem>
@@ -549,8 +546,8 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
                     <Grid DockPanel.Dock="Top" Height="128">
                     <!--<Grid DockPanel.Dock="Top" Height="158">-->
                         <!-- Main Timing -->
-                        <Label Content="Estimated Time" Margin="0,4,8,0" Style="{StaticResource Heading}"/>
-                        <Label x:Name="lblTimerLive" Content="0:00:00" Margin="0,8,5,0" VerticalAlignment="Top" FontSize="48" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
+                        <Label Content="Estimated Time" Margin="0,5,8,0" Style="{StaticResource Heading}"/>
+                        <Label x:Name="lblTimerLive" Content="0:00:00" Margin="0,9,5,0" VerticalAlignment="Top" FontSize="47" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
 
                         <Label Content="After Last Demo" Margin="0,72,8,0" Style="{StaticResource Heading}"/>
                         <Label x:Name="lblTimerSplit" Style="{StaticResource SplitTime}" Margin="0,82,36,0"
@@ -566,8 +563,6 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
                         <!-- Status -->
                         <Label Content="Status" Margin="0,-3,8,0" Style="{StaticResource Heading}"/>
                         <Label x:Name="lblStatus" Content="Select demo path." Margin="0,16,8,0" FontWeight="Bold" HorizontalAlignment="Right" Foreground="White"/>
-
-                        <TextBox x:Name="txtDemoDir" Visibility="Hidden" Height="23" Margin="10,135,109,0" TextWrapping="Wrap" Text="Choose where demos are saved." VerticalAlignment="Top" IsEnabled="False"/>
                     </Grid>
                     <Grid>
                         <!-- Chapter Splits -->
@@ -630,6 +625,11 @@ STATE_RUNNING = 1
 STATE_NOPATH = 2
 STATE_COMPLETE = 3
 
+BRUSH_DEFAULT = Media.SolidColorBrush(Media.Colors.White)
+BRUSH_GOOD = Media.SolidColorBrush(Media.Colors.LimeGreen)
+BRUSH_BAD = Media.SolidColorBrush(Media.Colors.Red)
+BRUSH_MEH = Media.SolidColorBrush(Media.Colors.OliveDrab)
+
 def findPortal2():
     guess = r'C:\Program Files (x86)\Steam\SteamApps\common\portal 2\portal2'
     if os.path.isdir(guess):
@@ -670,8 +670,7 @@ def loadDemoCSV(filename):
     demodata = combine_maps(demodata, validate=True)
     return demodata
 
-def chapterSplits(demodata):
-    map_times = combine_maps(startstop_to_ticks(demodata), validate=False)
+def chapterSplits(map_times):
     rec_maps = set([mapn for mapn, ticks in map_times.iteritems() if ticks > 0])
 
     ch_times = combine_chapters(map_times)
@@ -704,6 +703,33 @@ def formatTime(seconds, precision=0):
 
     return clock_fmt
 
+def formatDiff(seconds):
+    negative = seconds < 0
+    seconds = abs(seconds)
+    clock_hr = int(seconds // 3600)
+    clock_min = int((seconds // 60) % 60)
+    clock_sec = int(seconds % 60)
+    clock_frac = float(seconds) % 1
+
+    precision = 0
+    if clock_hr:
+        clock_fmt = '{:d}h{:02d}'.format(clock_hr, clock_min)
+    elif clock_min:
+        clock_fmt = '{:d}:{:02d}'.format(clock_min, clock_sec)
+        if clock_min < 10:
+            precision = 1
+    else:
+        clock_fmt = '{:d}'.format(clock_sec)
+        if clock_sec >= 10:
+            precision = 2
+        else:
+            precision = 3
+        
+    if precision:
+        clock_fmt = clock_fmt + '{:.{p}f}'.format(clock_frac, p=precision)[1:]
+
+    return (u'\u2212' if negative else '+') + clock_fmt
+
 BASE_BB = 'https://bitbucket.org/nick_timkovich/portal-2-live-timer/'
 
 def gotoWiki(sender, args):
@@ -716,7 +742,7 @@ def gotoIssues(sender, args):
     webbrowser.open(BASE_BB + 'issues?status=new&status=open')
 
 def about(sender, args):
-    MessageBox.Show(
+    Windows.MessageBox.Show(
         """Portal 2 Live Timer
         
 A timer that uses demos to time Portal 2 single player speedruns and
@@ -744,7 +770,8 @@ class Portal2LiveTimer(Window):
 
         self.mnuFileDemos.Click += self.pickDirectory
         self.mnuFileSave.Click += self.saveDemoCSV
-        #self.mnuFileLoad.Click += self.loadDemoCSV
+        self.mnuFileClose.Click += self.removeSplits
+        self.mnuFileLoad.Click += self.loadDemoCSV
         self.mnuFileExit.Click += lambda sender, args: self.Close()
 
         self.mnuEditCopy.Click += self.copyDemoData
@@ -756,17 +783,22 @@ class Portal2LiveTimer(Window):
         self.mnuHelpSource.Click += gotoSource
         self.mnuHelpAbout.Click += about
 
-        self.pickDialog = FolderBrowserDialog()
+        self.pickDialog = Forms.FolderBrowserDialog()
         self.pickDialog.Description = "Select the Portal 2 root directory where demos are saved."
         self.pickDialog.ShowNewFolderButton = False
         self.pickDialog.RootFolder = Environment.SpecialFolder.MyComputer
-
-        self.saveDialog = SaveFileDialog()
+        
+        self.saveDialog = Forms.SaveFileDialog()
         self.saveDialog.Title = "Select where to save demo timings"
         self.saveDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
+        self.openDialog = Forms.OpenFileDialog()
+        self.openDialog.Title = "Select a split file in 2- or 3-column CSV format"
+        self.openDialog.Filter = "CSV files (*.csv)|*.csv"
         
         self.demoData = []
-        self.splitData = []
+        self.demoDataChapters = [None] * len(CHAPTERS)
+        self.splitData = None
+        self.splitDataChapters = None
         self.lblTChs = [self.lblTCh1, self.lblTCh2, self.lblTCh3, 
                         self.lblTCh4, self.lblTCh5, self.lblTCh6, 
                         self.lblTCh7, self.lblTCh8, self.lblTCh9]
@@ -775,7 +807,6 @@ class Portal2LiveTimer(Window):
         if portalPath:
             self.demoDir = portalPath
             self.pickDialog.SelectedPath = self.demoDir
-            self.txtDemoDir.Text = self.demoDir
             self.transitionWait()
 
     def showhideMenu(self, sender, args):
@@ -788,9 +819,10 @@ class Portal2LiveTimer(Window):
         #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
-        self.splitChapters([None] * len(CHAPTERS))
         self.demoTime = 0
         self.demoData = []
+        self.demoDataChapters = [None] * len(CHAPTERS)
+        self.splitChapters()
         self.timer.Start()
         
         # demos dealt with
@@ -813,28 +845,45 @@ class Portal2LiveTimer(Window):
 
     def saveDemoCSV(self, sender, args):
         result = self.saveDialog.ShowDialog()
-        if result == DialogResult.OK and self.saveDialog.FileName:
+        if result == Forms.DialogResult.OK and self.saveDialog.FileName:
             try:
                 saveDemoCSV(self.saveDialog.FileName, self.demoData)
             except IOError:
-                MessageBox.Show("Error saving file", "Error saving", MessageBoxButton.OK, MessageBoxImage.Error)
+                Windows.MessageBox.Show("Error saving file", "Error saving", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def loadDemoCSV(self, sender, args):
-        pass
+        result = self.openDialog.ShowDialog()
+        if result == Forms.DialogResult.OK and self.openDialog.FileName:
+            try:
+                splitdata = loadDemoCSV(self.openDialog.FileName)
+            except SplitsParseError as e:
+                Windows.MessageBox.Show("Error parsing splits file!\n\n{}\n\n"
+                        "If this error is inexplicable, check the Help wiki (Help, Usage).\n"
+                        "If this error is in error, please file a bug report, attaching your CSV file (Help, Bugs)."
+                        .format(e.message), "Error loading", MessageBoxButton.OK, MessageBoxImage.Error)
+                return
+
+            self.splitData = splitdata
+            self.splitDataChapters = chapterSplits(splitdata)
+            self.splitChapters()
+
+    def removeSplits(self, sender, args):
+        self.splitData = None
+        self.splitDataChapters = None
+        self.splitChapters()
 
     def copyDemoData(self, sender, args):
         tsv = 'map\tstart tick\tend tick\n'
         tsv += '\n'.join(['\t'.join(str(f) for f in demo) for demo in self.demoData])
-        Clipboard.SetText(tsv)
+        Windows.Clipboard.SetText(tsv)
 
     def setOnTop(self, sender, args):
         self.Topmost = self.mnuViewOntop.IsChecked
 
     def pickDirectory(self, sender, args):
         result = self.pickDialog.ShowDialog()
-        if result == DialogResult.OK:
+        if result == Forms.DialogResult.OK:
             self.demoDir = self.pickDialog.SelectedPath
-            self.txtDemoDir.Text = self.demoDir
             self.transitionWait()
 
     def resetClick(self, sender, args):
@@ -879,8 +928,10 @@ class Portal2LiveTimer(Window):
                 self.splitTime(self.demoTime)
 
                 self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
-                ch_splits = chapterSplits(self.demoData)
-                self.splitChapters(ch_splits)
+
+                map_times = combine_maps(startstop_to_ticks(self.demoData), validate=False)
+                self.demoDataChapters = chapterSplits(map_times)
+                self.splitChapters()
 
                 self.processedDemos.add(demo_file)
                 if demo1.tick_end_game:
@@ -903,22 +954,41 @@ class Portal2LiveTimer(Window):
         timef = formatTime(seconds, 3)
         self.lblTimerSplit.Content = timef[:-4]
         self.lblTimerSplitMS.Content = timef[-3:]
-        
-    def splitChapters(self, current_splits, past_splits=None):
-        if past_splits is None:
-            highlighted = False
-            for i, (label, split) in enumerate(zip(self.lblTChs, current_splits)):
+
+    def splitChapters(self):
+        highlighted = False
+        if self.splitDataChapters is None:
+            for i, (label, split) in enumerate(zip(self.lblTChs, self.demoDataChapters)):
+                label.Foreground = BRUSH_DEFAULT
                 if split is not None:
                     label.Content = formatTime(split/60.0, 1)
                 else:
                     if not highlighted:
-                        self.rectChHighlight.Margin = Thickness(0, 3 + 20*i, 0, 0)
+                        self.rectChHighlight.Margin = Windows.Thickness(0, 3 + 20*i, 0, 0)
                         self.rectChHighlight.Visibility = Visibility.Visible
                         highlighted = True
                     label.Content = '---'
-            if not highlighted:
-                self.rectChHighlight.Visibility = Visibility.Hidden
+        else:
+            for i, (label, split, reference) in enumerate(zip(self.lblTChs, self.demoDataChapters, self.splitDataChapters)):
+                if split is not None:
+                    diff = split - reference
+                    label.Content = formatDiff(diff/60.0)
+                    if diff < 0:
+                        label.Foreground = BRUSH_GOOD
+                    elif diff > 0:
+                        label.Foreground = BRUSH_BAD
+                    else:
+                        label.Foreground = BRUSH_MEH
+                        label.Content = "par"
+                else:
+                    label.Content = formatTime(reference/60.0, 1)
+                    if not highlighted:
+                        self.rectChHighlight.Margin = Windows.Thickness(0, 3 + 20*i, 0, 0)
+                        self.rectChHighlight.Visibility = Visibility.Visible
+                        highlighted = True
 
+        if not highlighted:
+            self.rectChHighlight.Visibility = Visibility.Hidden
 
 if __name__ == '__main__':
     Application().Run(Portal2LiveTimer())

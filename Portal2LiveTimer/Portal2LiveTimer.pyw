@@ -26,7 +26,7 @@ import webbrowser
 import csv
 
 from sourcedemo import Demo, DemoProcessError
-from p2maps import MAPS, ALL_MAPS
+from p2maps import CHAPTERS, MAPS
 from mapsort import parse_csv, DemoParseException, combine_maps, startstop_to_ticks, combine_chapters
 
 STATE_WAIT = 0
@@ -79,11 +79,11 @@ def chapterSplits(demodata):
     rec_maps = set([mapn for mapn, ticks in map_times.iteritems() if ticks > 0])
 
     ch_times = combine_chapters(map_times)
-    ch_splits = [None] * len(MAPS)
+    ch_splits = [None] * len(CHAPTERS)
 
     # check that chapters are complete
     last_ch = 0
-    for i, chapter in enumerate(MAPS):
+    for i, chapter in enumerate(CHAPTERS):
         if set(chapter).issubset(rec_maps):
             ch_splits[i] = last_ch + ch_times[i]
             last_ch = ch_splits[i]
@@ -192,7 +192,7 @@ class Portal2LiveTimer(Window):
         #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
-        self.splitChapters([None] * len(MAPS))
+        self.splitChapters([None] * len(CHAPTERS))
         self.demoTime = 0
         self.demoData = []
         self.timer.Start()

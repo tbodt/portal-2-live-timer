@@ -3,10 +3,9 @@ import csv
 import itertools
 import collections
 
-from p2maps import MAPS
+from p2maps import CHAPTERS, MAPS
 
-ALL_MAPS = list(itertools.chain.from_iterable(MAPS))
-N_MAPS = len(ALL_MAPS)
+N_MAPS = len(MAPS)
 
 class DemoParseException(Exception):
     pass
@@ -66,10 +65,10 @@ def startstop_to_ticks(data):
 
 def validate_times(map_times, ignore_credits=True):
     if ignore_credits:
-        missing_maps = set(ALL_MAPS[:-1]) - set(map_times)
+        missing_maps = set(MAPS[:-1]) - set(map_times)
     else:
-        missing_maps = set(ALL_MAPS) - set(map_times)
-    unknown_maps = set(map_times) - set(ALL_MAPS)
+        missing_maps = set(MAPS) - set(map_times)
+    unknown_maps = set(map_times) - set(MAPS)
 
     if missing_maps:
         raise DemoParseException("Data file missing {} map(s) for complete run: {}".format(len(missing_maps), ', '.join(missing_maps)))
@@ -92,7 +91,7 @@ def sort_maps(map_times):
     Takes a dictionary with maps as keys and ticks as values and returns a
     sorted list-of-items (tuples) representation.
     """
-    map_times_sorted = sorted(map_times.items(), key=lambda x: ALL_MAPS.index(x[0]))
+    map_times_sorted = sorted(map_times.items(), key=lambda x: MAPS.index(x[0]))
     return map_times_sorted
 
 def combine_chapters(map_times):
@@ -100,8 +99,8 @@ def combine_chapters(map_times):
     Takes a dictionary with maps as keys and ticks as values and returns a
     list of ticks based on chapters
     """
-    chapter_times = [0 for _ in MAPS]
-    for i, chapter in enumerate(MAPS):
+    chapter_times = [0 for _ in CHAPTERS]
+    for i, chapter in enumerate(CHAPTERS):
         for mapn in chapter:
             chapter_times[i] += map_times[mapn]
 

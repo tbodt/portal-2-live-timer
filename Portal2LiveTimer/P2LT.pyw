@@ -263,7 +263,7 @@ class Demo(object):
         return raw_data
 
 ######## p2maps.py ###########################################
-MAPS = [
+CHAPTERS = [
     [# Chapter 1 - The Courtesy Call
         'sp_a1_intro1',
         'sp_a1_intro2',
@@ -347,9 +347,10 @@ MAPS = [
     ],
 ]
     
+MAPS = list(itertools.chain.from_iterable(CHAPTERS))
+
 ######## mapsort.py ###########################################
-ALL_MAPS = list(itertools.chain.from_iterable(MAPS))
-N_MAPS = len(ALL_MAPS)
+N_MAPS = len(MAPS)
 
 class DemoParseException(Exception):
     pass
@@ -409,10 +410,10 @@ def startstop_to_ticks(data):
 
 def validate_times(map_times, ignore_credits=True):
     if ignore_credits:
-        missing_maps = set(ALL_MAPS[:-1]) - set(map_times)
+        missing_maps = set(MAPS[:-1]) - set(map_times)
     else:
-        missing_maps = set(ALL_MAPS) - set(map_times)
-    unknown_maps = set(map_times) - set(ALL_MAPS)
+        missing_maps = set(MAPS) - set(map_times)
+    unknown_maps = set(map_times) - set(MAPS)
 
     if missing_maps:
         raise DemoParseException("Data file missing {} map(s) for complete run: {}".format(len(missing_maps), ', '.join(missing_maps)))
@@ -435,7 +436,7 @@ def sort_maps(map_times):
     Takes a dictionary with maps as keys and ticks as values and returns a
     sorted list-of-items (tuples) representation.
     """
-    map_times_sorted = sorted(map_times.items(), key=lambda x: ALL_MAPS.index(x[0]))
+    map_times_sorted = sorted(map_times.items(), key=lambda x: MAPS.index(x[0]))
     return map_times_sorted
 
 def combine_chapters(map_times):
@@ -443,8 +444,8 @@ def combine_chapters(map_times):
     Takes a dictionary with maps as keys and ticks as values and returns a
     list of ticks based on chapters
     """
-    chapter_times = [0 for _ in MAPS]
-    for i, chapter in enumerate(MAPS):
+    chapter_times = [0 for _ in CHAPTERS]
+    for i, chapter in enumerate(CHAPTERS):
         for mapn in chapter:
             chapter_times[i] += map_times[mapn]
 
@@ -465,6 +466,13 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
         <Style x:Key="baseLabel" TargetType="{x:Type Label}">
             <Setter Property="Foreground" Value="#DDD"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style x:Key="MenuRoot" TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="#FFAEAEAE"/>
+            <Setter Property="Margin" Value="2"/>
         </Style>
         <Style x:Key="Heading" TargetType="{x:Type Label}" BasedOn="{StaticResource baseLabel}">
             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -490,28 +498,29 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
     </Window.Resources>
     <Grid>
         <DockPanel Panel.ZIndex="100">
-            <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
-                <MenuItem Header="_File" Margin="2">
-                    <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory" Foreground="Black"/>
+            <Menu x:Name="mnuMain" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
+                <MenuItem Header="_FILE" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory"/>
                     <Separator />
-                    <MenuItem x:Name="mnuFileLoad" Header="_Open Maps/Ticks CSV (coming soon)" IsEnabled="False"/>
-                    <MenuItem x:Name="mnuFileSave" Header="_Save Maps/Ticks CSV" Foreground="Black"/>
+                    <MenuItem x:Name="mnuFileLoad" Header="_Open Splits..." IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileClose" Header="_Close Splits" IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileSave" Header="_Save Splits..."/>
                     <Separator />
-                    <MenuItem x:Name="mnuFileExit" Header="E_xit" Foreground="Black"/>
+                    <MenuItem x:Name="mnuFileExit" Header="E_xit"/>
                 </MenuItem>
-                <MenuItem Header="_Edit" Margin="2">
-                    <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
+                <MenuItem Header="_EDIT" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks"/>
                 </MenuItem>
-                <MenuItem Header="_View" Margin="2">
-                    <MenuItem x:Name="mnuViewOntop"  Header="_Always on Top" IsCheckable="True" Foreground="Black"/>
+                <MenuItem Header="_VIEW" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuViewOntop"  Header="_Always on Top" IsCheckable="True"/>
                 </MenuItem>
-                <MenuItem Header="_Help" Margin="2">
-                    <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>
+                <MenuItem Header="_HELP" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuHelpHelp" Header="_Usage"/>
                     <Separator/>
-                    <MenuItem x:Name="mnuHelpSource" Header="_Source Repo" Foreground="Black"/>
-                    <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests" Foreground="Black"/>
+                    <MenuItem x:Name="mnuHelpSource" Header="_Source Repo"/>
+                    <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests"/>
                     <Separator/>
-                    <MenuItem x:Name="mnuHelpAbout" Header="_About" Foreground="Black"/>
+                    <MenuItem x:Name="mnuHelpAbout" Header="_About"/>
                 </MenuItem>
             </Menu>
             <Grid />
@@ -519,7 +528,7 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
         <DockPanel>
             <StatusBar DockPanel.Dock="Bottom" Background="#222" Foreground="#999">
                 <StatusBarItem>
-                    <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
+                    <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version x.y.z"/>
                 </StatusBarItem>
                 <StatusBarItem HorizontalAlignment="Right">
                     <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Center" Margin="0" 
@@ -611,7 +620,6 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
         </DockPanel>
     </Grid>
 </Window> 
-
 """))
 
 ######## Portal2LiveTimer.pyw ###########################################
@@ -665,11 +673,11 @@ def chapterSplits(demodata):
     rec_maps = set([mapn for mapn, ticks in map_times.iteritems() if ticks > 0])
 
     ch_times = combine_chapters(map_times)
-    ch_splits = [None] * len(MAPS)
+    ch_splits = [None] * len(CHAPTERS)
 
     # check that chapters are complete
     last_ch = 0
-    for i, chapter in enumerate(MAPS):
+    for i, chapter in enumerate(CHAPTERS):
         if set(chapter).issubset(rec_maps):
             ch_splits[i] = last_ch + ch_times[i]
             last_ch = ch_splits[i]
@@ -778,7 +786,7 @@ class Portal2LiveTimer(Window):
         #self.lblLastMap.Content = "(none)"
         self.clockTime(0)
         self.splitTime(0)
-        self.splitChapters([None] * len(MAPS))
+        self.splitChapters([None] * len(CHAPTERS))
         self.demoTime = 0
         self.demoData = []
         self.timer.Start()

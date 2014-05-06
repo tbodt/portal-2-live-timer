@@ -1,4 +1,6 @@
-MAPS = [
+import itertools
+
+CHAPTERS = [
     [# Chapter 1 - The Courtesy Call
         'sp_a1_intro1',
         'sp_a1_intro2',
@@ -81,3 +83,5 @@ MAPS = [
         #'sp_a5_credits',
     ],
 ]
+
+MAPS = list(itertools.chain.from_iterable(CHAPTERS))

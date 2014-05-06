@@ -12,6 +12,13 @@
             <Setter Property="Foreground" Value="#DDD"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
         </Style>
+        <Style TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+        <Style x:Key="MenuRoot" TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="#FFAEAEAE"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
         <Style x:Key="Heading" TargetType="{x:Type Label}" BasedOn="{StaticResource baseLabel}">
             <Setter Property="HorizontalAlignment" Value="Right"/>
         </Style>
@@ -36,28 +43,29 @@
     </Window.Resources>
     <Grid>
         <DockPanel Panel.ZIndex="100">
-            <Menu x:Name="mnuMain" Foreground="#FFAEAEAE" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
-                <MenuItem Header="_File" Margin="2">
-                    <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory" Foreground="Black"/>
+            <Menu x:Name="mnuMain" Visibility="Collapsed" DockPanel.Dock="Top" Background="#252525">
+                <MenuItem Header="_FILE" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuFileDemos" Header="Select _Demo Directory"/>
                     <Separator />
-                    <MenuItem x:Name="mnuFileLoad" Header="_Open Maps/Ticks CSV (coming soon)" IsEnabled="False"/>
-                    <MenuItem x:Name="mnuFileSave" Header="_Save Maps/Ticks CSV" Foreground="Black"/>
+                    <MenuItem x:Name="mnuFileLoad" Header="_Open Splits..." IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileClose" Header="_Close Splits" IsEnabled="False"/>
+                    <MenuItem x:Name="mnuFileSave" Header="_Save Splits..."/>
                     <Separator />
-                    <MenuItem x:Name="mnuFileExit" Header="E_xit" Foreground="Black"/>
+                    <MenuItem x:Name="mnuFileExit" Header="E_xit"/>
                 </MenuItem>
-                <MenuItem Header="_Edit" Margin="2">
-                    <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks" Foreground="Black"/>
+                <MenuItem Header="_EDIT" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuEditCopy" Header="_Copy Maps/Ticks"/>
                 </MenuItem>
-                <MenuItem Header="_View" Margin="2">
-                    <MenuItem x:Name="mnuViewOntop"  Header="_Always on Top" IsCheckable="True" Foreground="Black"/>
+                <MenuItem Header="_VIEW" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuViewOntop"  Header="_Always on Top" IsCheckable="True"/>
                 </MenuItem>
-                <MenuItem Header="_Help" Margin="2">
-                    <MenuItem x:Name="mnuHelpHelp" Header="_Usage" Foreground="Black"/>
+                <MenuItem Header="_HELP" Style="{StaticResource MenuRoot}">
+                    <MenuItem x:Name="mnuHelpHelp" Header="_Usage"/>
                     <Separator/>
-                    <MenuItem x:Name="mnuHelpSource" Header="_Source Repo" Foreground="Black"/>
-                    <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests" Foreground="Black"/>
+                    <MenuItem x:Name="mnuHelpSource" Header="_Source Repo"/>
+                    <MenuItem x:Name="mnuHelpIssues" Header="_Bugs/Feature Requests"/>
                     <Separator/>
-                    <MenuItem x:Name="mnuHelpAbout" Header="_About" Foreground="Black"/>
+                    <MenuItem x:Name="mnuHelpAbout" Header="_About"/>
                 </MenuItem>
             </Menu>
             <Grid />
@@ -65,7 +73,7 @@
         <DockPanel>
             <StatusBar DockPanel.Dock="Bottom" Background="#222" Foreground="#999">
                 <StatusBarItem>
-                    <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version ?"/>
+                    <TextBlock x:Name="tblkVersion" TextWrapping="Wrap" Text="version x.y.z"/>
                 </StatusBarItem>
                 <StatusBarItem HorizontalAlignment="Right">
                     <Button x:Name="btnReset" Content="Reset" HorizontalAlignment="Center" Margin="0" 
@@ -153,7 +161,6 @@
                         <Label x:Name="lblTCh9" Content="---" Style="{StaticResource ChapterTime}" Margin="0,160,4,0"/>
                     </Grid>
                 </DockPanel>
-
             </Grid>
         </DockPanel>
     </Grid>

@@ -7,7 +7,7 @@ from p2maps import CHAPTERS, MAPS
 
 N_MAPS = len(MAPS)
 
-class DemoParseException(Exception):
+class SplitsParseError(Exception):
     pass
 
 def parse_csv(file):
@@ -30,24 +30,24 @@ def parse_csv(file):
 
             data = [row for row in democsv]
     except IOError as e:
-        raise DemoParseException("Could not read file")
+        raise SplitsParseError("Could not read file")
     except csv.Error as e:
-        raise DemoParseException("Could not parse file as CSV")
+        raise SplitsParseError("Could not parse file as CSV")
 
     problems = []
 
     data_len = len(data)
     if data_len == 0:
-        raise DemoParseException("Empty data file")
+        raise SplitsParseError("Empty data file")
 
     field_len = len(header if header else data[0])
     if not (2 <= field_len <= 3):
-        raise DemoParseException("Data file must have 2 (map/ticks) or 3 (map/start tick/stop tick) fields ({} detected)".format(field_len))
+        raise SplitsParseError("Data file must have 2 (map/ticks) or 3 (map/start tick/stop tick) fields ({} detected)".format(field_len))
 
     # make sure it's all the same size
     for i, row in enumerate(data, start=1):
         if len(row) != field_len:
-            raise DemoParseException("Row {} is differently sized than other rows ({} long, expected {})".format(i+1 if header else i, len(row), field_len))
+            raise SplitsParseError("Row {} is differently sized than other rows ({} long, expected {})".format(i+1 if header else i, len(row), field_len))
 
     # convert strings into numbers
     try:
@@ -56,7 +56,7 @@ def parse_csv(file):
         elif field_len == 2:
             data = [(mapn, int(ticks)) for mapn, ticks in data]
     except ValueError as e:
-        raise DemoParseException("Error converting data, ensure ticks are integers")
+        raise SplitsParseError("Error converting data, ensure ticks are integers")
 
     return data
 
@@ -71,9 +71,9 @@ def validate_times(map_times, ignore_credits=True):
     unknown_maps = set(map_times) - set(MAPS)
 
     if missing_maps:
-        raise DemoParseException("Data file missing {} map(s) for complete run: {}".format(len(missing_maps), ', '.join(missing_maps)))
+        raise SplitsParseError("Data file missing {} map(s) for complete run: {}".format(len(missing_maps), ', '.join(missing_maps)))
     if unknown_maps:
-        raise DemoParseException("Data file contains {} unrecognized map(s): {}".format(len(unknown_maps), ', '.join(unknown_maps)))
+        raise SplitsParseError("Data file contains {} unrecognized map(s): {}".format(len(unknown_maps), ', '.join(unknown_maps)))
 
 def combine_maps(data, validate=True):
     # sum ticks

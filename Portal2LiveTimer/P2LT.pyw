@@ -6,7 +6,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.2.1'
+__version__ = '0.2.1a'
 
 import wpf
 
@@ -348,7 +348,7 @@ MAPS = list(itertools.chain.from_iterable(CHAPTERS))
 ######## mapsort.py ###########################################
 N_MAPS = len(MAPS)
 
-class SplitsParseError(Exception):
+class SplitsParseError(IOError):
     pass
 
 def parse_csv(file):
@@ -887,6 +887,7 @@ class Portal2LiveTimer(Window):
             try:
                 splitdata = loadDemoCSV(self.openDialog.FileName)
             except SplitsParseError as e:
+                print(e)
                 Windows.MessageBox.Show("Error parsing splits file!\n\n{}\n\n"
                         "If this error is inexplicable, check the Help wiki (Help, Usage).\n"
                         "If this error is in error, please file a bug report, attaching your CSV file (Help, Bugs)."

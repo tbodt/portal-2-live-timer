@@ -7,7 +7,7 @@ from p2maps import CHAPTERS, MAPS
 
 N_MAPS = len(MAPS)
 
-class SplitsParseError(Exception):
+class SplitsParseError(IOError):
     pass
 
 def parse_csv(file):

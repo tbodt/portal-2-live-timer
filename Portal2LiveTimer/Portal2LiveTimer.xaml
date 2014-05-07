@@ -92,7 +92,7 @@
                     </LinearGradientBrush>
                 </Grid.Background>
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" Height="128">
+                    <Grid x:Name="gridMainTimes"  DockPanel.Dock="Top" Height="128">
                     <!--<Grid DockPanel.Dock="Top" Height="158">-->
                         <!-- Main Timing -->
                         <Label Content="Estimated Time" Margin="0,5,8,0" Style="{StaticResource Heading}"/>
@@ -103,7 +103,7 @@
                                Content="0:00"/>
                         <Label x:Name="lblTimerSplitMS" Style="{StaticResource SplitTimeMS}" Margin="0,88,7,0" 
                                Content="000"/>
-                        <Label x:Name="lblTimerSplitDiff" Style="{StaticResource SplitTime}" Foreground="#0C0" Margin="0,112,36,-2" 
+                        <Label x:Name="lblTimerSplitDiff" Style="{StaticResource SplitTime}" Foreground="#0C0" Margin="0,112,36,0" 
                                Content="−0:00"/>
                         <Label x:Name="lblTimerSplitDiffMS" Style="{StaticResource SplitTimeMS}" Foreground="#0C0" Margin="0,118,7,0"
                                Content="000"/>

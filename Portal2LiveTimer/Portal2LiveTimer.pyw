@@ -6,7 +6,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 import wpf
 
@@ -25,7 +25,10 @@ import csv
 
 from sourcedemo import Demo, DemoProcessError
 from p2maps import CHAPTERS, MAPS
-from mapsort import parse_csv, SplitsParseError, combine_maps, startstop_to_ticks, combine_chapters
+from mapsort import parse_csv, SplitsParseError, combine_maps, startstop_to_ticks, combine_chapters, sort_maps
+
+TIME_FUDGE_LOAD = -2
+TIME_FUDGE_START = -12
 
 STATE_WAIT = 0
 STATE_RUNNING = 1
@@ -94,6 +97,17 @@ def chapterSplits(map_times):
 
     return ch_splits
 
+def mapSplits(map_times):
+    sorted_times = sort_maps(map_times)
+    map_splits = []
+
+    last_map = 0
+    for mapn, ticks in sorted_times:
+        map_splits.append(last_map + ticks)
+        last_map = map_splits[-1]
+
+    return map_splits
+
 def formatTime(seconds, precision=0):
     clock_hr = int(seconds // 3600)
     clock_min = int((seconds // 60) % 60)
@@ -110,7 +124,7 @@ def formatTime(seconds, precision=0):
 
     return clock_fmt
 
-def formatDiff(seconds):
+def formatDiff(seconds, variable_precision=True):
     negative = seconds < 0
     seconds = abs(seconds)
     clock_hr = int(seconds // 3600)
@@ -118,22 +132,33 @@ def formatDiff(seconds):
     clock_sec = int(seconds % 60)
     clock_frac = float(seconds) % 1
 
-    precision = 0
-    if clock_hr:
-        clock_fmt = '{:d}h{:02d}'.format(clock_hr, clock_min)
-    elif clock_min:
-        clock_fmt = '{:d}:{:02d}'.format(clock_min, clock_sec)
-        if clock_min < 10:
-            precision = 1
-    else:
-        clock_fmt = '{:d}'.format(clock_sec)
-        if clock_sec >= 10:
-            precision = 2
+    if variable_precision:
+        precision = 0
+        if clock_hr:
+            clock_fmt = '{:d}h{:02d}'.format(clock_hr, clock_min)
+        elif clock_min:
+            clock_fmt = '{:d}:{:02d}'.format(clock_min, clock_sec)
+            if clock_min < 10:
+                precision = 1
         else:
-            precision = 3
+            clock_fmt = '{:d}'.format(clock_sec)
+            if clock_sec >= 10:
+                precision = 2
+            else:
+                precision = 3
+    else:
+        if clock_hr:
+            clock_fmt = '{:d}:{:02d}:{:02d}'.format(clock_hr, clock_min, clock_sec)
+        elif clock_min:
+            clock_fmt = '{:d}:{:02d}'.format(clock_min, clock_sec)
+        else:
+            clock_fmt = '{:d}'.format(clock_sec)
+        precision = 3
         
     if precision:
         clock_fmt = clock_fmt + '{:.{p}f}'.format(clock_frac, p=precision)[1:]
+
+    #Debug.WriteLine('Diff format: {}, negative={}'.format(seconds, negative))
 
     return (u'\u2212' if negative else '+') + clock_fmt
 
@@ -202,9 +227,12 @@ class Portal2LiveTimer(Window):
         self.openDialog.Title = "Select a split file in 2- or 3-column CSV format"
         self.openDialog.Filter = "CSV files (*.csv)|*.csv"
         
+        self.mapDeltaShowing = False
         self.demoData = []
+        self.demoDataMaps = []
         self.demoDataChapters = [None] * len(CHAPTERS)
         self.splitData = None
+        self.splitDataMaps = None
         self.splitDataChapters = None
         self.lblTChs = [self.lblTCh1, self.lblTCh2, self.lblTCh3, 
                         self.lblTCh4, self.lblTCh5, self.lblTCh6, 
@@ -228,7 +256,9 @@ class Portal2LiveTimer(Window):
         self.splitTime(0)
         self.demoTime = 0
         self.demoData = []
+        self.demoDataMaps = []
         self.demoDataChapters = [None] * len(CHAPTERS)
+        self.splitMap()
         self.splitChapters()
         self.timer.Start()
         
@@ -271,13 +301,30 @@ class Portal2LiveTimer(Window):
                 return
 
             self.splitData = splitdata
+            self.splitDataMaps = mapSplits(splitdata)
             self.splitDataChapters = chapterSplits(splitdata)
+            self.showMapDelta()
+            self.splitMap()
             self.splitChapters()
 
     def removeSplits(self, sender, args):
         self.splitData = None
+        self.splitDataMaps = None
         self.splitDataChapters = None
         self.splitChapters()
+        self.hideMapDelta()
+
+    def showMapDelta(self):
+        if not self.mapDeltaShowing:
+            self.Height += 30
+            self.gridMainTimes.Height += 30
+            self.mapDeltaShowing = True
+        
+    def hideMapDelta(self):
+        if self.mapDeltaShowing:
+            self.Height -= 30
+            self.gridMainTimes.Height -= 30
+            self.mapDeltaShowing = False
 
     def copyDemoData(self, sender, args):
         tsv = 'map\tstart tick\tend tick\n'
@@ -330,14 +377,16 @@ class Portal2LiveTimer(Window):
                 #self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
                 # resync timer and update split
-                self.timeStart = time.time() - self.demoTime
+                self.timeStart = time.time() - self.demoTime + TIME_FUDGE_LOAD
                 self.update_clock()
                 self.splitTime(self.demoTime)
 
                 self.demoData.append((demo1.header['map_name'], demo1.tick_start, demo1.tick_end))
 
                 map_times = combine_maps(startstop_to_ticks(self.demoData), validate=False)
+                self.demoDataMaps = mapSplits(map_times)
                 self.demoDataChapters = chapterSplits(map_times)
+                self.splitMap()
                 self.splitChapters()
 
                 self.processedDemos.add(demo_file)
@@ -361,6 +410,32 @@ class Portal2LiveTimer(Window):
         timef = formatTime(seconds, 3)
         self.lblTimerSplit.Content = timef[:-4]
         self.lblTimerSplitMS.Content = timef[-3:]
+
+    def splitMap(self):
+        if self.splitDataMaps:
+            empty = True
+            for split, reference in zip(self.demoDataMaps, self.splitDataMaps):
+                empty = False
+            
+            if not empty:
+                diff = split - reference
+                positive = True if diff > 0 else False
+                timef = formatDiff(diff / 60.0, variable_precision=False)
+                
+                if diff != 0:
+                    self.lblTimerSplitDiff.Content = timef[:-4]
+                    self.lblTimerSplitDiffMS.Content = timef[-3:]
+                    self.lblTimerSplitDiff.Foreground = BRUSH_BAD if positive else BRUSH_GOOD
+                    self.lblTimerSplitDiffMS.Foreground = BRUSH_BAD if positive else BRUSH_GOOD
+                else:
+                    self.lblTimerSplitDiff.Content = 'par'
+                    self.lblTimerSplitDiff.Foreground = BRUSH_MEH
+                    self.lblTimerSplitDiffMS.Content = ''
+            else:
+                self.lblTimerSplitDiff.Content = '---'
+                self.lblTimerSplitDiffMS.Content = ''
+                self.lblTimerSplitDiff.Foreground = BRUSH_DEFAULT
+                self.lblTimerSplitDiffMS.Foreground = BRUSH_DEFAULT
 
     def splitChapters(self):
         highlighted = False
@@ -389,6 +464,7 @@ class Portal2LiveTimer(Window):
                         label.Content = "par"
                 else:
                     label.Content = formatTime(reference/60.0, 1)
+                    label.Foreground = BRUSH_DEFAULT
                     if not highlighted:
                         self.rectChHighlight.Margin = Windows.Thickness(0, 3 + 20*i, 0, 0)
                         self.rectChHighlight.Visibility = Visibility.Visible

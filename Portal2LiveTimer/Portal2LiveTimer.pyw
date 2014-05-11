@@ -6,7 +6,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.2.1a'
+__version__ = '0.2.1b'
 
 import wpf
 

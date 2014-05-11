@@ -6,7 +6,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.2.1a'
+__version__ = '0.2.1b'
 
 import wpf
 
@@ -576,7 +576,7 @@ xamlStream = IO.MemoryStream(ASCIIEncoding.ASCII.GetBytes("""
                         </Rectangle>
 
                         <Label Margin="4,0,0,0" Style="{StaticResource ChapterTitle}">
-                            <TextBlock>1. <Italic>The Courtsey Call</Italic></TextBlock>
+                            <TextBlock>1. <Italic>The Courtesy Call</Italic></TextBlock>
                         </Label>
                         <Label Margin="4,20,0,0" Style="{StaticResource ChapterTitle}">
                             <TextBlock>2. <Italic>The Cold Boot</Italic></TextBlock>

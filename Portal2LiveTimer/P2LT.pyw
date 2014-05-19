@@ -6,7 +6,7 @@ clr.AddReference("PresentationCore")
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 
-__version__ = '0.2.1b'
+__version__ = '0.2.1c'
 
 import wpf
 
@@ -971,7 +971,7 @@ class Portal2LiveTimer(Window):
                 #self.lblLastMap.Content = demo1.header['map_name'].replace('_', '__')
 
                 # resync timer and update split
-                self.timeStart = time.time() - self.demoTime + TIME_FUDGE_LOAD
+                self.timeStart = time.time() - self.demoTime - TIME_FUDGE_LOAD
                 self.update_clock()
                 self.splitTime(self.demoTime)
 
